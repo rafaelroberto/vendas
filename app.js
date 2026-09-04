@@ -7,7 +7,7 @@ let selecoesMultiplas = {
   etapa: []
 };
 let charts = {};
-let direcaoOrdenacao = {}; // Guarda a direção de cada coluna (asc/desc)
+let direcaoOrdenacao = {}; // Guarda o estado da ordenação por coluna
 
 const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5L5eTew/exec";
 
@@ -21,16 +21,36 @@ window.onload = () => {
   });
 };
 
-// FORMATAR DATA EM BRASIL (DD/MM/AAAA HH:mm)
-function formatarDataBR(isoStr) {
-  if (!isoStr) return '-';
-  const d = new Date(isoStr);
-  if (isNaN(d.getTime())) return '-';
+// FORMATAR DATA EM BRASIL (DD/MM/AAAA HH:mm) DE FORMA ULTRA ROBUSTA
+function formatarDataBR(valor) {
+  if (!valor || valor === '-' || valor === 'undefined' || valor === 'null') return '-';
+
+  let d = new Date(valor);
+
+  // Se não for ISO pura, tenta parsing de texto PT-BR ou Data do Google
+  if (isNaN(d.getTime())) {
+    const cleanStr = String(valor).trim();
+    // Verifica formato AAAA-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
+      d = new Date(cleanStr.replace(' ', 'T'));
+    } 
+    // Verifica formato DD/MM/AAAA
+    else if (/^\d{2}\/\d{2}\/\d{4}/.test(cleanStr)) {
+      const parts = cleanStr.split(' ');
+      const dateParts = parts[0].split('/');
+      const timeStr = parts[1] || '00:00:00';
+      d = new Date(`${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${timeStr}`);
+    }
+  }
+
+  if (isNaN(d.getTime())) return String(valor);
+
   const dia = String(d.getDate()).padStart(2, '0');
   const mes = String(d.getMonth() + 1).padStart(2, '0');
   const ano = d.getFullYear();
   const hora = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
+
   return `${dia}/${mes}/${ano} ${hora}:${min}`;
 }
 
@@ -44,7 +64,7 @@ async function carregarDados() {
       if (progresso > 90) progresso = 90;
       atualizarProgressoLoading(progresso);
     }
-  }, 120);
+  }, 100);
 
   try {
     const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
@@ -57,7 +77,7 @@ async function carregarDados() {
       inicializarFiltrosMultiplos(dadosGlobais);
       aplicarFiltros();
       esconderLoadingOverlay();
-    }, 250);
+    }, 200);
 
   } catch (err) {
     clearInterval(interval);
@@ -202,6 +222,7 @@ function aplicarFiltros() {
   atualizarKPIs(dadosFiltrados);
   renderizarGraficoEvolucaoMensal(dadosFiltrados);
   renderizarGraficosRegraNegocio(dadosFiltrados);
+  povoarTabelaFoco(dadosFiltrados);
   povoarTabelaGeral(dadosFiltrados);
 }
 
@@ -382,7 +403,74 @@ function gerarChartBar(canvasId, agrupaObj, label, corHex) {
   });
 }
 
-// Tabela Geral de Detalhamento
+// TABELA NOVE: OPORTUNIDADES EM FOCO (Assinatura, Proposta e Negociação)
+function povoarTabelaFoco(dados) {
+  const tbody = document.getElementById("table-foco").querySelector("tbody");
+  tbody.innerHTML = "";
+  
+  const etapasFoco = ['assinatura', 'proposta', 'negociação', 'negociacao'];
+  const dadosFoco = dados.filter(d => etapasFoco.includes(String(d.etapa).toLowerCase()));
+
+  if (dadosFoco.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="9" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhuma conta encontrada nessas etapas ativas.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  dadosFoco.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.conta || '-'}</td>
+      <td>${row.vendedor || '-'}</td>
+      <td>${row.origem || '-'}</td>
+      <td>${row.bdr || '-'}</td>
+      <td><strong>${row.etapa || '-'}</strong></td>
+      <td>${row.status || '-'}</td>
+      <td>${formatarDataBR(row.dataCriacao)}</td>
+      <td>${formatarDataBR(row.dataEntradaEtapa)}</td>
+      <td>${row.motivoPerda || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function filtrarTabelaFoco(termo) {
+  const txt = termo.toLowerCase();
+  const etapasFoco = ['assinatura', 'proposta', 'negociação', 'negociacao'];
+  const dadosFoco = dadosFiltrados.filter(d => etapasFoco.includes(String(d.etapa).toLowerCase()));
+  
+  const filtrados = dadosFoco.filter(d => {
+    return (
+      (d.conta && d.conta.toLowerCase().includes(txt)) ||
+      (d.vendedor && d.vendedor.toLowerCase().includes(txt)) ||
+      (d.bdr && d.bdr.toLowerCase().includes(txt)) ||
+      (d.origem && d.origem.toLowerCase().includes(txt)) ||
+      (d.etapa && d.etapa.toLowerCase().includes(txt))
+    );
+  });
+  
+  const tbody = document.getElementById("table-foco").querySelector("tbody");
+  tbody.innerHTML = "";
+
+  filtrados.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.conta || '-'}</td>
+      <td>${row.vendedor || '-'}</td>
+      <td>${row.origem || '-'}</td>
+      <td>${row.bdr || '-'}</td>
+      <td><strong>${row.etapa || '-'}</strong></td>
+      <td>${row.status || '-'}</td>
+      <td>${formatarDataBR(row.dataCriacao)}</td>
+      <td>${formatarDataBR(row.dataEntradaEtapa)}</td>
+      <td>${row.motivoPerda || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// TABELA GERAL DE DETALHAMENTO
 function povoarTabelaGeral(dados) {
   const tbody = document.getElementById("table-geral").querySelector("tbody");
   tbody.innerHTML = "";
@@ -473,47 +561,63 @@ function fecharModal() {
   if (modal) modal.style.display = "none";
 }
 
-// CORREÇÃO DEFINITIVA DA ORDENAÇÃO DE COLUNAS (TEXTO, NÚMERO E DATAS)
+// ORDENAÇÃO COMPLETA DE COLUNAS (TEXTO, NÚMERO E DATAS BRASILEIRAS)
 function ordenarTabela(tableId, colIndex) {
   const table = document.getElementById(tableId);
   const tbody = table.querySelector("tbody");
   const rows = Array.from(tbody.querySelectorAll("tr"));
   
+  if (rows.length === 0) return;
+
   const chave = `${tableId}-${colIndex}`;
   direcaoOrdenacao[chave] = direcaoOrdenacao[chave] === "asc" ? "desc" : "asc";
   const asc = direcaoOrdenacao[chave] === "asc";
+
+  // Atualizar ícones visuais nos cabeçalhos
+  const ths = table.querySelectorAll("th");
+  ths.forEach((th, idx) => {
+    const iconSpan = th.querySelector(".sort-icon");
+    if (iconSpan) {
+      if (idx === colIndex) {
+        iconSpan.innerText = asc ? "▲" : "▼";
+        iconSpan.style.color = "#38bdf8";
+      } else {
+        iconSpan.innerText = "⇕";
+        iconSpan.style.color = "var(--text-muted)";
+      }
+    }
+  });
 
   rows.sort((a, b) => {
     const cellA = a.children[colIndex] ? a.children[colIndex].innerText.trim() : "";
     const cellB = b.children[colIndex] ? b.children[colIndex].innerText.trim() : "";
 
-    // Testar se é data DD/MM/AAAA
-    const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})/;
-    const isDateA = datePattern.test(cellA);
-    const isDateB = datePattern.test(cellB);
+    // Expressão Regular para Data Brasileira DD/MM/AAAA HH:mm
+    const regexData = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/;
+    const matchA = cellA.match(regexData);
+    const matchB = cellB.match(regexData);
 
-    if (isDateA && isDateB) {
-      const [dA, mA, yA] = cellA.split(' ')[0].split('/');
-      const [dB, mB, yB] = cellB.split(' ')[0].split('/');
-      const dateA = new Date(`${yA}-${mA}-${dA}`);
-      const dateB = new Date(`${yB}-${mB}-${dB}`);
+    if (matchA && matchB) {
+      const dateA = new Date(matchA[3], matchA[2] - 1, matchA[1], matchA[4] || 0, matchA[5] || 0);
+      const dateB = new Date(matchB[3], matchB[2] - 1, matchB[1], matchB[4] || 0, matchB[5] || 0);
       return asc ? dateA - dateB : dateB - dateA;
     }
 
-    // Comparação numérica ou de texto
-    const numA = Number(cellA);
-    const numB = Number(cellB);
+    // Tentar comparação Numérica
+    const numA = Number(cellA.replace(',', '.'));
+    const numB = Number(cellB.replace(',', '.'));
 
-    if (!isNaN(numA) && !isNaN(numB)) {
+    if (!isNaN(numA) && !isNaN(numB) && cellA !== "" && cellB !== "") {
       return asc ? numA - numB : numB - numA;
     }
 
+    // Comparação Alfabética em Português
     return asc 
-      ? cellA.localeCompare(cellB, 'pt-BR', { numeric: true })
-      : cellB.localeCompare(cellA, 'pt-BR', { numeric: true });
+      ? cellA.localeCompare(cellB, 'pt-BR', { numeric: true, sensitivity: 'base' })
+      : cellB.localeCompare(cellA, 'pt-BR', { numeric: true, sensitivity: 'base' });
   });
 
-  // Reordena os elementos na DOM
+  // Re-inserir as linhas ordenadas
   rows.forEach(row => tbody.appendChild(row));
 }
 
