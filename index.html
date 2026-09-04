@@ -124,12 +124,12 @@
       </div>
     </section>
 
-    <!-- KPIs Clicáveis -->
+    <!-- KPIs Clicáveis (COM NOVO KPI DE TAXA DE CONVERSÃO) -->
     <section class="kpi-grid">
       <div class="kpi-card" onclick="abrirModalDetalhes('Criados')">
         <div class="kpi-header">
           <h3>Criados</h3>
-          <span class="kpi-tag">Total</span>
+          <span class="kpi-tag">Total Criado</span>
         </div>
         <span class="kpi-value" id="kpi-criados">0</span>
       </div>
@@ -137,7 +137,7 @@
       <div class="kpi-card success" onclick="abrirModalDetalhes('Ganhos')">
         <div class="kpi-header">
           <h3>Ganhos</h3>
-          <span class="kpi-tag success">Convertidos</span>
+          <span class="kpi-tag success">Entrada na Etapa</span>
         </div>
         <span class="kpi-value" id="kpi-ganhos">0</span>
       </div>
@@ -156,6 +156,14 @@
           <span class="kpi-tag warning">Em Funil</span>
         </div>
         <span class="kpi-value" id="kpi-aberto">0</span>
+      </div>
+
+      <div class="kpi-card conversion" onclick="abrirModalDetalhes('ConversaoSafra')">
+        <div class="kpi-header">
+          <h3>Taxa de Conversão</h3>
+          <span class="kpi-tag conversion">Mesmo Período</span>
+        </div>
+        <span class="kpi-value" id="kpi-conversao">0%</span>
       </div>
     </section>
 
@@ -200,7 +208,7 @@
       </div>
     </section>
 
-    <!-- CARD NOVO: OPORTUNIDADES EM FOCO (ASSINATURA, PROPOSTA E NEGOCIAÇÃO) -->
+    <!-- OPORTUNIDADES EM FOCO -->
     <section class="details-section">
       <div class="card card-table-full border-highlight-warning">
         <div class="card-table-header">
