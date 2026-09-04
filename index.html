@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard BI Commercial</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard-container">
+    
+    <header class="header">
+      <h1>Dashboard Comercial</h1>
+      <div class="actions">
+        <button id="btn-sync" onclick="carregarDados()">🔄 Atualizar dados</button>
+        <button id="btn-export" onclick="exportarCSV()">📥 Exportar CSV</button>
+      </div>
+    </header>
+
+    <section class="filters-bar">
+      <div class="filter-group">
+        <label>Período:</label>
+        <select id="filter-date" onchange="aplicarFiltros()">
+          <option value="hoje">Hoje</option>
+          <option value="esta_semana">Essa Semana</option>
+          <option value="este_mes" selected>Esse Mês</option>
+          <option value="mes_passado">Mês Passado</option>
+          <option value="este_ano">Esse Ano</option>
+          <option value="ano_passado">Ano Passado</option>
+          <option value="todo_periodo">Todo Período</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Vendedor:</label>
+        <input type="text" id="search-vendedor" placeholder="Buscar Vendedor..." oninput="aplicarFiltros()">
+      </div>
+
+      <div class="filter-group">
+        <label>BDR:</label>
+        <input type="text" id="search-bdr" placeholder="Buscar BDR..." oninput="aplicarFiltros()">
+      </div>
+
+      <div class="filter-group">
+        <label>Origem:</label>
+        <input type="text" id="search-origem" placeholder="Buscar Origem..." oninput="aplicarFiltros()">
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <div class="kpi-card" onclick="abrirModalDetalhes('Criados')">
+        <h3>Criados</h3>
+        <span class="kpi-value" id="kpi-criados">0</span>
+      </div>
+      <div class="kpi-card success" onclick="abrirModalDetalhes('Ganhos')">
+        <h3>Ganhos</h3>
+        <span class="kpi-value" id="kpi-ganhos">0</span>
+      </div>
+      <div class="kpi-card danger" onclick="abrirModalDetalhes('Perdidos')">
+        <h3>Perdidos</h3>
+        <span class="kpi-value" id="kpi-perdidos">0</span>
+      </div>
+      <div class="kpi-card warning" onclick="abrirModalDetalhes('Em Aberto')">
+        <h3>Em Aberto</h3>
+        <span class="kpi-value" id="kpi-aberto">0</span>
+      </div>
+    </section>
+
+    <section class="charts-grid">
+      
+      <div class="card">
+        <h2>Ranking por Vendedor</h2>
+        <canvas id="chartVendedor"></canvas>
+        <div class="table-wrapper">
+          <table id="table-vendedor">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-vendedor', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 5)">Motivo Perda ⇕</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ranking por BDR</h2>
+        <canvas id="chartBDR"></canvas>
+        <div class="table-wrapper">
+          <table id="table-bdr">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-bdr', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 5)">Motivo Perda ⇕</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ranking por Origem</h2>
+        <canvas id="chartOrigem"></canvas>
+        <div class="table-wrapper">
+          <table id="table-origem">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-origem', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 5)">Motivo Perda ⇕</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ranking de Perdidos por Motivo</h2>
+        <canvas id="chartPerdidos"></canvas>
+        <div class="table-wrapper">
+          <table id="table-perdidos">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-perdidos', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 5)">Motivo Perda ⇕</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <div id="modal-detalhes" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="fecharModal()">&times;</span>
+        <h2 id="modal-titulo">Detalhamento das Contas</h2>
+        <div class="table-wrapper">
+          <table id="table-modal">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-modal', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 5)">Motivo Perda ⇕</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
