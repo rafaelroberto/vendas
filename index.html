@@ -8,6 +8,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
+  <!-- OVERLAY DE CARREGAMENTO COM BLUR E PORCENTAGEM -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <h2>Carregando Dados do CRM...</h2>
+      <div class="progress-bar-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p id="loading-percent" class="loading-percent">0%</p>
+    </div>
+  </div>
+
   <div class="dashboard-container">
     
     <!-- Cabeçalho -->
@@ -52,7 +65,7 @@
         <div class="custom-dropdown" id="dropdown-vendedor">
           <input type="text" class="search-input" placeholder="Pesquisar vendedor..." oninput="filtrarListaOptions(this, 'options-vendedor')">
           <div class="actions-dropdown">
-            <button class="btn-link" onclick="limparSelecao('vendedor')">Limpar seleção</button>
+            <button class="btn-link" onclick="limparSelecaoIndividual('vendedor')">Desmarcar todos</button>
           </div>
           <div class="options-list" id="options-vendedor"></div>
         </div>
@@ -68,7 +81,7 @@
         <div class="custom-dropdown" id="dropdown-bdr">
           <input type="text" class="search-input" placeholder="Pesquisar BDR..." oninput="filtrarListaOptions(this, 'options-bdr')">
           <div class="actions-dropdown">
-            <button class="btn-link" onclick="limparSelecao('bdr')">Limpar seleção</button>
+            <button class="btn-link" onclick="limparSelecaoIndividual('bdr')">Desmarcar todos</button>
           </div>
           <div class="options-list" id="options-bdr"></div>
         </div>
@@ -84,7 +97,7 @@
         <div class="custom-dropdown" id="dropdown-origem">
           <input type="text" class="search-input" placeholder="Pesquisar origem..." oninput="filtrarListaOptions(this, 'options-origem')">
           <div class="actions-dropdown">
-            <button class="btn-link" onclick="limparSelecao('origem')">Limpar seleção</button>
+            <button class="btn-link" onclick="limparSelecaoIndividual('origem')">Desmarcar todos</button>
           </div>
           <div class="options-list" id="options-origem"></div>
         </div>
@@ -100,10 +113,17 @@
         <div class="custom-dropdown" id="dropdown-etapa">
           <input type="text" class="search-input" placeholder="Pesquisar etapa..." oninput="filtrarListaOptions(this, 'options-etapa')">
           <div class="actions-dropdown">
-            <button class="btn-link" onclick="limparSelecao('etapa')">Limpar seleção</button>
+            <button class="btn-link" onclick="limparSelecaoIndividual('etapa')">Desmarcar todos</button>
           </div>
           <div class="options-list" id="options-etapa"></div>
         </div>
+      </div>
+
+      <!-- Botão de Reset de Filtros -->
+      <div class="filter-group filter-group-btn">
+        <button class="btn btn-reset-filters" onclick="resetarTodosFiltros()">
+          🧹 Limpar todos os filtros
+        </button>
       </div>
     </section>
 
@@ -142,7 +162,7 @@
       </div>
     </section>
 
-    <!-- NOVO: Gráfico de Linhas - Evolução Mensal -->
+    <!-- Gráfico de Linhas - Evolução Mensal -->
     <section class="evolution-section">
       <div class="card card-full-width">
         <h2>Evolução Mensal (Criados vs Ganhos vs Perdidos)</h2>
