@@ -7,6 +7,7 @@ let selecoesMultiplas = {
   etapa: []
 };
 let charts = {};
+let direcaoOrdenacao = {}; // Guarda a direção de cada coluna (asc/desc)
 
 const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5L5eTew/exec";
 
@@ -20,7 +21,19 @@ window.onload = () => {
   });
 };
 
-// SIMULADOR DE PROGRESSO + BUSCA REAL DE DADOS
+// FORMATAR DATA EM BRASIL (DD/MM/AAAA HH:mm)
+function formatarDataBR(isoStr) {
+  if (!isoStr) return '-';
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return '-';
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const ano = d.getFullYear();
+  const hora = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${dia}/${mes}/${ano} ${hora}:${min}`;
+}
+
 async function carregarDados() {
   exibirLoadingOverlay();
 
@@ -31,7 +44,7 @@ async function carregarDados() {
       if (progresso > 90) progresso = 90;
       atualizarProgressoLoading(progresso);
     }
-  }, 150);
+  }, 120);
 
   try {
     const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
@@ -44,7 +57,7 @@ async function carregarDados() {
       inicializarFiltrosMultiplos(dadosGlobais);
       aplicarFiltros();
       esconderLoadingOverlay();
-    }, 300);
+    }, 250);
 
   } catch (err) {
     clearInterval(interval);
@@ -159,7 +172,6 @@ function limparSelecaoIndividual(campo) {
   atualizarSelecaoMultipla(campo);
 }
 
-// LIMPAR TODOS OS FILTROS DA PÁGINA
 function resetarTodosFiltros() {
   document.getElementById('filter-date').value = 'todo_periodo';
 
@@ -384,6 +396,8 @@ function povoarTabelaGeral(dados) {
       <td>${row.bdr || '-'}</td>
       <td>${row.etapa || '-'}</td>
       <td>${row.status || '-'}</td>
+      <td>${formatarDataBR(row.dataCriacao)}</td>
+      <td>${formatarDataBR(row.dataEntradaEtapa)}</td>
       <td>${row.motivoPerda || '-'}</td>
     `;
     tbody.appendChild(tr);
@@ -406,7 +420,7 @@ function filtrarTabelaGeral(termo) {
   povoarTabelaGeral(filtrados);
 }
 
-// MODAL / POPUP KPIS CLICÁVEIS (CORRIGIDO)
+// MODAL / POPUP KPIS CLICÁVEIS
 function abrirModalDetalhes(tipoKpi) {
   const modal = document.getElementById("modal-detalhes");
   if (!modal) return;
@@ -431,7 +445,7 @@ function abrirModalDetalhes(tipoKpi) {
   
   if (listaModal.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado para este filtro.</td>`;
+    tr.innerHTML = `<td colspan="9" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado para este filtro.</td>`;
     tbodyModal.appendChild(tr);
   } else {
     listaModal.forEach(row => {
@@ -443,6 +457,8 @@ function abrirModalDetalhes(tipoKpi) {
         <td>${row.bdr || '-'}</td>
         <td>${row.etapa || '-'}</td>
         <td>${row.status || '-'}</td>
+        <td>${formatarDataBR(row.dataCriacao)}</td>
+        <td>${formatarDataBR(row.dataEntradaEtapa)}</td>
         <td>${row.motivoPerda || '-'}</td>
       `;
       tbodyModal.appendChild(tr);
@@ -457,54 +473,61 @@ function fecharModal() {
   if (modal) modal.style.display = "none";
 }
 
-// Ordenação de Colunas
+// CORREÇÃO DEFINITIVA DA ORDENAÇÃO DE COLUNAS (TEXTO, NÚMERO E DATAS)
 function ordenarTabela(tableId, colIndex) {
   const table = document.getElementById(tableId);
-  let rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
   
-  while (switching) {
-    switching = false;
-    rows = table.rows;
-    for (i = 1; i < (rows.length - 1); i++) {
-      shouldSwitch = false;
-      x = rows[i].getElementsByTagName("TD")[colIndex];
-      y = rows[i + 1].getElementsByTagName("TD")[colIndex];
-      
-      if (!x || !y) continue;
+  const chave = `${tableId}-${colIndex}`;
+  direcaoOrdenacao[chave] = direcaoOrdenacao[chave] === "asc" ? "desc" : "asc";
+  const asc = direcaoOrdenacao[chave] === "asc";
 
-      let xVal = x.innerText.toLowerCase();
-      let yVal = y.innerText.toLowerCase();
+  rows.sort((a, b) => {
+    const cellA = a.children[colIndex] ? a.children[colIndex].innerText.trim() : "";
+    const cellB = b.children[colIndex] ? b.children[colIndex].innerText.trim() : "";
 
-      if (dir === "asc") {
-        if (xVal > yVal) { shouldSwitch = true; break; }
-      } else if (dir === "desc") {
-        if (xVal < yVal) { shouldSwitch = true; break; }
-      }
+    // Testar se é data DD/MM/AAAA
+    const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})/;
+    const isDateA = datePattern.test(cellA);
+    const isDateB = datePattern.test(cellB);
+
+    if (isDateA && isDateB) {
+      const [dA, mA, yA] = cellA.split(' ')[0].split('/');
+      const [dB, mB, yB] = cellB.split(' ')[0].split('/');
+      const dateA = new Date(`${yA}-${mA}-${dA}`);
+      const dateB = new Date(`${yB}-${mB}-${dB}`);
+      return asc ? dateA - dateB : dateB - dateA;
     }
-    if (shouldSwitch) {
-      rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-      switching = true;
-      switchcount++;
-    } else {
-      if (switchcount === 0 && dir === "asc") {
-        dir = "desc";
-        switching = true;
-      }
+
+    // Comparação numérica ou de texto
+    const numA = Number(cellA);
+    const numB = Number(cellB);
+
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return asc ? numA - numB : numB - numA;
     }
-  }
+
+    return asc 
+      ? cellA.localeCompare(cellB, 'pt-BR', { numeric: true })
+      : cellB.localeCompare(cellA, 'pt-BR', { numeric: true });
+  });
+
+  // Reordena os elementos na DOM
+  rows.forEach(row => tbody.appendChild(row));
 }
 
 // Exportar CSV
 function exportarCSV() {
-  let csv = "Conta,Vendedor,Origem,BDR,Etapa,Status,Motivo Perda\n";
+  let csv = "Conta,Vendedor,Origem,BDR,Etapa,Status,Data Criacao,Entrada Etapa Atual,Motivo Perda\n";
   dadosFiltrados.forEach(row => {
-    csv += `"${row.conta}","${row.vendedor}","${row.origem}","${row.bdr}","${row.etapa}","${row.status}","${row.motivoPerda}"\n`;
+    csv += `"${row.conta}","${row.vendedor}","${row.origem}","${row.bdr}","${row.etapa}","${row.status}","${formatarDataBR(row.dataCriacao)}","${formatarDataBR(row.dataEntradaEtapa)}","${row.motivoPerda}"\n`;
   });
   
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "relatorio_bi_puca_crm.csv";
+  a.download = "relatorio_bi_lifeapps_crm.csv";
   a.click();
 }
