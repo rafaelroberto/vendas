@@ -23,10 +23,9 @@
 
   <div class="dashboard-container">
     
-    <!-- Cabeçalho com Logo -->
+    <!-- Cabeçalho -->
     <header class="header">
       <div class="brand-container">
-        <!-- Logo da empresa integrada em SVG/Base64 -->
         <img id="company-logo" class="logo-img" alt="LifeApps Logo" src="logo.png">
         <div class="brand-text">
           <h1>Dashboard Comercial</h1>
@@ -201,26 +200,60 @@
       </div>
     </section>
 
-    <!-- Detalhamento de Contas em Card Separado -->
+    <!-- CARD NOVO: OPORTUNIDADES EM FOCO (ASSINATURA, PROPOSTA E NEGOCIAÇÃO) -->
+    <section class="details-section">
+      <div class="card card-table-full border-highlight-warning">
+        <div class="card-table-header">
+          <div>
+            <h2>🔥 Oportunidades em Foco (Assinatura, Proposta e Negociação)</h2>
+            <p class="subtitle-card">Contas avançadas no funil comercial</p>
+          </div>
+          <input type="text" id="search-table-foco" class="search-input-inline" placeholder="Buscar no funil quente..." oninput="filtrarTabelaFoco(this.value)">
+        </div>
+        <div class="table-wrapper">
+          <table id="table-foco">
+            <thead>
+              <tr>
+                <th onclick="ordenarTabela('table-foco', 0)">Conta <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 1)">Vendedor <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 2)">Origem <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 3)">BDR <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 4)">Etapa <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 5)">Status <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 6)">Data Criação <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 7)">Entrada Etapa Atual <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-foco', 8)">Motivo Perda <span class="sort-icon">⇕</span></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Detalhamento Geral de Contas -->
     <section class="details-section">
       <div class="card card-table-full">
         <div class="card-table-header">
-          <h2>Detalhamento Geral das Contas</h2>
+          <div>
+            <h2>Detalhamento Geral das Contas</h2>
+            <p class="subtitle-card">Base completa de dados filtrados</p>
+          </div>
           <input type="text" id="search-table-main" class="search-input-inline" placeholder="Buscar em qualquer coluna..." oninput="filtrarTabelaGeral(this.value)">
         </div>
         <div class="table-wrapper">
           <table id="table-geral">
             <thead>
               <tr>
-                <th onclick="ordenarTabela('table-geral', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 5)">Status ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 6)">Data Criação ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 7)">Entrada Etapa Atual ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 8)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 0)">Conta <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 1)">Vendedor <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 2)">Origem <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 3)">BDR <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 4)">Etapa <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 5)">Status <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 6)">Data Criação <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 7)">Entrada Etapa Atual <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-geral', 8)">Motivo Perda <span class="sort-icon">⇕</span></th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -240,15 +273,15 @@
           <table id="table-modal">
             <thead>
               <tr>
-                <th onclick="ordenarTabela('table-modal', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 5)">Status ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 6)">Data Criação ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 7)">Entrada Etapa Atual ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 8)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 0)">Conta <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 1)">Vendedor <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 2)">Origem <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 3)">BDR <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 4)">Etapa <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 5)">Status <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 6)">Data Criação <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 7)">Entrada Etapa Atual <span class="sort-icon">⇕</span></th>
+                <th onclick="ordenarTabela('table-modal', 8)">Motivo Perda <span class="sort-icon">⇕</span></th>
               </tr>
             </thead>
             <tbody id="tbody-modal"></tbody>
