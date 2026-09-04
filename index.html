@@ -42,8 +42,8 @@
         </select>
       </div>
 
-      <!-- Custom Select com Busca Interna: Vendedor -->
-      <div class="filter-group custom-select-container" id="container-vendedor">
+      <!-- Custom Select: Vendedor -->
+      <div class="filter-group custom-select-container">
         <label>Vendedor</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-vendedor')">
           <span id="label-vendedor">Todos os Vendedores</span>
@@ -55,8 +55,8 @@
         </div>
       </div>
 
-      <!-- Custom Select com Busca Interna: BDR -->
-      <div class="filter-group custom-select-container" id="container-bdr">
+      <!-- Custom Select: BDR -->
+      <div class="filter-group custom-select-container">
         <label>BDR / SDR</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-bdr')">
           <span id="label-bdr">Todos os BDRs</span>
@@ -68,8 +68,8 @@
         </div>
       </div>
 
-      <!-- Custom Select com Busca Interna: Origem -->
-      <div class="filter-group custom-select-container" id="container-origem">
+      <!-- Custom Select: Origem -->
+      <div class="filter-group custom-select-container">
         <label>Origem / Indicador</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-origem')">
           <span id="label-origem">Todas as Origens</span>
@@ -117,93 +117,55 @@
       </div>
     </section>
 
-    <!-- Cards e Gráficos -->
+    <!-- Grid de Gráficos (Ranking limpos) -->
     <section class="charts-grid">
-      <!-- Card Vendedor -->
       <div class="card">
-        <h2>Ranking por Vendedor</h2>
+        <h2>Ranking por Vendedor (Ganhos)</h2>
         <div class="chart-container">
           <canvas id="chartVendedor"></canvas>
         </div>
-        <div class="table-wrapper">
-          <table id="table-vendedor">
-            <thead>
-              <tr>
-                <th onclick="ordenarTabela('table-vendedor', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 5)">Motivo Perda ⇕</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
       </div>
 
-      <!-- Card BDR -->
       <div class="card">
-        <h2>Ranking por BDR</h2>
+        <h2>Ranking por BDR (Criados)</h2>
         <div class="chart-container">
           <canvas id="chartBDR"></canvas>
         </div>
-        <div class="table-wrapper">
-          <table id="table-bdr">
-            <thead>
-              <tr>
-                <th onclick="ordenarTabela('table-bdr', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 5)">Motivo Perda ⇕</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
       </div>
 
-      <!-- Card Origem -->
       <div class="card">
         <h2>Ranking por Origem</h2>
         <div class="chart-container">
           <canvas id="chartOrigem"></canvas>
         </div>
-        <div class="table-wrapper">
-          <table id="table-origem">
-            <thead>
-              <tr>
-                <th onclick="ordenarTabela('table-origem', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 5)">Motivo Perda ⇕</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
       </div>
 
-      <!-- Card Motivo Perda -->
       <div class="card">
         <h2>Ranking de Perdidos por Motivo</h2>
         <div class="chart-container">
           <canvas id="chartPerdidos"></canvas>
         </div>
+      </div>
+    </section>
+
+    <!-- CARD SEPARADO DE DETALHAMENTO DE CONTAS -->
+    <section class="details-section">
+      <div class="card card-table-full">
+        <div class="card-table-header">
+          <h2>Detalhamento Geral das Contas</h2>
+          <input type="text" id="search-table-main" class="search-input-inline" placeholder="Buscar em qualquer coluna..." oninput="filtrarTabelaGeral(this.value)">
+        </div>
         <div class="table-wrapper">
-          <table id="table-perdidos">
+          <table id="table-geral">
             <thead>
               <tr>
-                <th onclick="ordenarTabela('table-perdidos', 0)">Conta ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 1)">Vendedor ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 2)">Origem ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 5)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 0)">Conta ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 1)">Vendedor ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 2)">Origem ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 3)">BDR ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 4)">Etapa ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 5)">Status ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 6)">Motivo Perda ⇕</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -212,11 +174,11 @@
       </div>
     </section>
 
-    <!-- Modal para Detalhes dos KPIs -->
+    <!-- POPUP / MODAL DETALHAMENTO DOS KPIS -->
     <div id="modal-detalhes" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 id="modal-titulo">Detalhamento das Contas</h2>
+          <h2 id="modal-titulo">Detalhamento de Registros</h2>
           <span class="close-btn" onclick="fecharModal()">&times;</span>
         </div>
         <div class="table-wrapper modal-table-wrapper">
@@ -228,10 +190,11 @@
                 <th onclick="ordenarTabela('table-modal', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 3)">BDR ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 4)">Etapa ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 5)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 5)">Status ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 6)">Motivo Perda ⇕</th>
               </tr>
             </thead>
-            <tbody></tbody>
+            <tbody id="tbody-modal"></tbody>
           </table>
         </div>
       </div>
