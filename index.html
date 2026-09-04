@@ -3,76 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard BI Commercial</title>
+  <title>Dashboard BI Comercial - Puca CRM</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="dashboard-container">
     
+    <!-- Cabeçalho -->
     <header class="header">
-      <h1>Dashboard Comercial</h1>
+      <div class="brand">
+        <h1>Dashboard Comercial</h1>
+        <p class="subtitle">B.I. de Performance de Vendas</p>
+      </div>
       <div class="actions">
-        <button id="btn-sync" onclick="carregarDados()">🔄 Atualizar dados</button>
-        <button id="btn-export" onclick="exportarCSV()">📥 Exportar CSV</button>
+        <button id="btn-sync" class="btn btn-primary" onclick="carregarDados()">
+          <span class="icon">🔄</span> Atualizar dados
+        </button>
+        <button id="btn-export" class="btn btn-secondary" onclick="exportarCSV()">
+          <span class="icon">📥</span> Exportar CSV
+        </button>
       </div>
     </header>
 
+    <!-- Barra de Filtros -->
     <section class="filters-bar">
+      <!-- Filtro de Data -->
       <div class="filter-group">
-        <label>Período:</label>
+        <label>Período</label>
         <select id="filter-date" onchange="aplicarFiltros()">
+          <option value="todo_periodo" selected>Todo Período</option>
           <option value="hoje">Hoje</option>
           <option value="esta_semana">Essa Semana</option>
-          <option value="este_mes" selected>Esse Mês</option>
+          <option value="este_mes">Esse Mês</option>
           <option value="mes_passado">Mês Passado</option>
           <option value="este_ano">Esse Ano</option>
           <option value="ano_passado">Ano Passado</option>
-          <option value="todo_periodo">Todo Período</option>
-          <option value="personalizado">Personalizado</option>
         </select>
       </div>
 
-      <div class="filter-group">
-        <label>Vendedor:</label>
-        <input type="text" id="search-vendedor" placeholder="Buscar Vendedor..." oninput="aplicarFiltros()">
+      <!-- Custom Select com Busca Interna: Vendedor -->
+      <div class="filter-group custom-select-container" id="container-vendedor">
+        <label>Vendedor</label>
+        <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-vendedor')">
+          <span id="label-vendedor">Todos os Vendedores</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="custom-dropdown" id="dropdown-vendedor">
+          <input type="text" class="search-input" placeholder="Pesquisar vendedor..." oninput="filtrarListaOptions(this, 'options-vendedor')">
+          <div class="options-list" id="options-vendedor"></div>
+        </div>
       </div>
 
-      <div class="filter-group">
-        <label>BDR:</label>
-        <input type="text" id="search-bdr" placeholder="Buscar BDR..." oninput="aplicarFiltros()">
+      <!-- Custom Select com Busca Interna: BDR -->
+      <div class="filter-group custom-select-container" id="container-bdr">
+        <label>BDR / SDR</label>
+        <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-bdr')">
+          <span id="label-bdr">Todos os BDRs</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="custom-dropdown" id="dropdown-bdr">
+          <input type="text" class="search-input" placeholder="Pesquisar BDR..." oninput="filtrarListaOptions(this, 'options-bdr')">
+          <div class="options-list" id="options-bdr"></div>
+        </div>
       </div>
 
-      <div class="filter-group">
-        <label>Origem:</label>
-        <input type="text" id="search-origem" placeholder="Buscar Origem..." oninput="aplicarFiltros()">
+      <!-- Custom Select com Busca Interna: Origem -->
+      <div class="filter-group custom-select-container" id="container-origem">
+        <label>Origem / Indicador</label>
+        <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-origem')">
+          <span id="label-origem">Todas as Origens</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="custom-dropdown" id="dropdown-origem">
+          <input type="text" class="search-input" placeholder="Pesquisar origem..." oninput="filtrarListaOptions(this, 'options-origem')">
+          <div class="options-list" id="options-origem"></div>
+        </div>
       </div>
     </section>
 
+    <!-- KPIs Clicáveis -->
     <section class="kpi-grid">
       <div class="kpi-card" onclick="abrirModalDetalhes('Criados')">
-        <h3>Criados</h3>
+        <div class="kpi-header">
+          <h3>Criados</h3>
+          <span class="kpi-tag">Total</span>
+        </div>
         <span class="kpi-value" id="kpi-criados">0</span>
       </div>
+
       <div class="kpi-card success" onclick="abrirModalDetalhes('Ganhos')">
-        <h3>Ganhos</h3>
+        <div class="kpi-header">
+          <h3>Ganhos</h3>
+          <span class="kpi-tag success">Convertidos</span>
+        </div>
         <span class="kpi-value" id="kpi-ganhos">0</span>
       </div>
+
       <div class="kpi-card danger" onclick="abrirModalDetalhes('Perdidos')">
-        <h3>Perdidos</h3>
+        <div class="kpi-header">
+          <h3>Perdidos</h3>
+          <span class="kpi-tag danger">Desqualificados</span>
+        </div>
         <span class="kpi-value" id="kpi-perdidos">0</span>
       </div>
+
       <div class="kpi-card warning" onclick="abrirModalDetalhes('Em Aberto')">
-        <h3>Em Aberto</h3>
+        <div class="kpi-header">
+          <h3>Em Aberto</h3>
+          <span class="kpi-tag warning">Em Funil</span>
+        </div>
         <span class="kpi-value" id="kpi-aberto">0</span>
       </div>
     </section>
 
+    <!-- Cards e Gráficos -->
     <section class="charts-grid">
-      
+      <!-- Card Vendedor -->
       <div class="card">
         <h2>Ranking por Vendedor</h2>
-        <canvas id="chartVendedor"></canvas>
+        <div class="chart-container">
+          <canvas id="chartVendedor"></canvas>
+        </div>
         <div class="table-wrapper">
           <table id="table-vendedor">
             <thead>
@@ -81,7 +133,7 @@
                 <th onclick="ordenarTabela('table-vendedor', 1)">Vendedor ⇕</th>
                 <th onclick="ordenarTabela('table-vendedor', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-vendedor', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-vendedor', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-vendedor', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-vendedor', 5)">Motivo Perda ⇕</th>
               </tr>
             </thead>
@@ -90,9 +142,12 @@
         </div>
       </div>
 
+      <!-- Card BDR -->
       <div class="card">
         <h2>Ranking por BDR</h2>
-        <canvas id="chartBDR"></canvas>
+        <div class="chart-container">
+          <canvas id="chartBDR"></canvas>
+        </div>
         <div class="table-wrapper">
           <table id="table-bdr">
             <thead>
@@ -101,7 +156,7 @@
                 <th onclick="ordenarTabela('table-bdr', 1)">Vendedor ⇕</th>
                 <th onclick="ordenarTabela('table-bdr', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-bdr', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-bdr', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-bdr', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-bdr', 5)">Motivo Perda ⇕</th>
               </tr>
             </thead>
@@ -110,9 +165,12 @@
         </div>
       </div>
 
+      <!-- Card Origem -->
       <div class="card">
         <h2>Ranking por Origem</h2>
-        <canvas id="chartOrigem"></canvas>
+        <div class="chart-container">
+          <canvas id="chartOrigem"></canvas>
+        </div>
         <div class="table-wrapper">
           <table id="table-origem">
             <thead>
@@ -121,7 +179,7 @@
                 <th onclick="ordenarTabela('table-origem', 1)">Vendedor ⇕</th>
                 <th onclick="ordenarTabela('table-origem', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-origem', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-origem', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-origem', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-origem', 5)">Motivo Perda ⇕</th>
               </tr>
             </thead>
@@ -130,9 +188,12 @@
         </div>
       </div>
 
+      <!-- Card Motivo Perda -->
       <div class="card">
         <h2>Ranking de Perdidos por Motivo</h2>
-        <canvas id="chartPerdidos"></canvas>
+        <div class="chart-container">
+          <canvas id="chartPerdidos"></canvas>
+        </div>
         <div class="table-wrapper">
           <table id="table-perdidos">
             <thead>
@@ -141,7 +202,7 @@
                 <th onclick="ordenarTabela('table-perdidos', 1)">Vendedor ⇕</th>
                 <th onclick="ordenarTabela('table-perdidos', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-perdidos', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-perdidos', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-perdidos', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-perdidos', 5)">Motivo Perda ⇕</th>
               </tr>
             </thead>
@@ -149,14 +210,16 @@
           </table>
         </div>
       </div>
-
     </section>
 
+    <!-- Modal para Detalhes dos KPIs -->
     <div id="modal-detalhes" class="modal">
       <div class="modal-content">
-        <span class="close" onclick="fecharModal()">&times;</span>
-        <h2 id="modal-titulo">Detalhamento das Contas</h2>
-        <div class="table-wrapper">
+        <div class="modal-header">
+          <h2 id="modal-titulo">Detalhamento das Contas</h2>
+          <span class="close-btn" onclick="fecharModal()">&times;</span>
+        </div>
+        <div class="table-wrapper modal-table-wrapper">
           <table id="table-modal">
             <thead>
               <tr>
@@ -164,7 +227,7 @@
                 <th onclick="ordenarTabela('table-modal', 1)">Vendedor ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 2)">Origem ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 3)">BDR ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 4)">% Conv. ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 5)">Motivo Perda ⇕</th>
               </tr>
             </thead>
