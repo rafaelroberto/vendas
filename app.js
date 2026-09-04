@@ -1,5 +1,5 @@
 let dadosGlobais = [];
-const SHEETS_ENDPOINT = "SEU_ENDPOINT_DO_GOOGLE_APPS_SCRIPT_AQUI";
+const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5.../exec";
 
 // Configuração de carregamento inicial
 window.onload = () => {
