@@ -1,5 +1,6 @@
 let dadosGlobais = [];
-let dadosFiltrados = [];
+let dadosFiltradosCriados = []; // Filtrados pela data de criação
+let dadosFiltradosGanhos = [];   // Filtrados pela data de entrada na etapa Ganho
 let selecoesMultiplas = {
   vendedor: [],
   bdr: [],
@@ -7,7 +8,7 @@ let selecoesMultiplas = {
   etapa: []
 };
 let charts = {};
-let direcaoOrdenacao = {}; // Guarda o estado da ordenação por coluna
+let direcaoOrdenacao = {};
 
 const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5L5eTew/exec";
 
@@ -21,21 +22,16 @@ window.onload = () => {
   });
 };
 
-// FORMATAR DATA EM BRASIL (DD/MM/AAAA HH:mm) DE FORMA ULTRA ROBUSTA
 function formatarDataBR(valor) {
   if (!valor || valor === '-' || valor === 'undefined' || valor === 'null') return '-';
 
   let d = new Date(valor);
 
-  // Se não for ISO pura, tenta parsing de texto PT-BR ou Data do Google
   if (isNaN(d.getTime())) {
     const cleanStr = String(valor).trim();
-    // Verifica formato AAAA-MM-DD
     if (/^\d{4}-\d{2}-\d{2}/.test(cleanStr)) {
       d = new Date(cleanStr.replace(' ', 'T'));
-    } 
-    // Verifica formato DD/MM/AAAA
-    else if (/^\d{2}\/\d{2}\/\d{4}/.test(cleanStr)) {
+    } else if (/^\d{2}\/\d{2}\/\d{4}/.test(cleanStr)) {
       const parts = cleanStr.split(' ');
       const dateParts = parts[0].split('/');
       const timeStr = parts[1] || '00:00:00';
@@ -105,7 +101,6 @@ function atualizarProgressoLoading(percent) {
   if (txt) txt.innerText = `${percent}%`;
 }
 
-// FILTROS MULTI-SELECT
 function inicializarFiltrosMultiplos(dados) {
   const vendedores = [...new Set(dados.map(d => d.vendedor))].filter(Boolean).sort();
   const bdrs = [...new Set(dados.map(d => d.bdr))].filter(Boolean).sort();
@@ -206,10 +201,12 @@ function resetarTodosFiltros() {
   aplicarFiltros();
 }
 
+// APLICAÇÃO DE FILTROS COM REGRA DE SAFRA DE GANHO E CONVERSÃO
 function aplicarFiltros() {
   const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
   
-  dadosFiltrados = dadosGlobais.filter(item => {
+  // Base 1: Filtrados pela DATA DE CRIAÇÃO
+  dadosFiltradosCriados = dadosGlobais.filter(item => {
     const matchVend = selecoesMultiplas.vendedor.includes(item.vendedor);
     const matchBdr = selecoesMultiplas.bdr.includes(item.bdr);
     const matchOrig = selecoesMultiplas.origem.includes(item.origem);
@@ -219,11 +216,23 @@ function aplicarFiltros() {
     return matchVend && matchBdr && matchOrig && matchEtapa && matchData;
   });
 
-  atualizarKPIs(dadosFiltrados);
-  renderizarGraficoEvolucaoMensal(dadosFiltrados);
-  renderizarGraficosRegraNegocio(dadosFiltrados);
-  povoarTabelaFoco(dadosFiltrados);
-  povoarTabelaGeral(dadosFiltrados);
+  // Base 2: Ganhos Filtrados pela DATA DE ENTRADA NA ETAPA
+  dadosFiltradosGanhos = dadosGlobais.filter(item => {
+    const matchVend = selecoesMultiplas.vendedor.includes(item.vendedor);
+    const matchBdr = selecoesMultiplas.bdr.includes(item.bdr);
+    const matchOrig = selecoesMultiplas.origem.includes(item.origem);
+    const matchEtapa = selecoesMultiplas.etapa.includes(item.etapa);
+    const isGanho = String(item.status).toLowerCase() === 'ganho';
+    const matchDataGanho = filtrarPorData(item.dataEntradaEtapa || item.dataCriacao, dataOpt);
+
+    return matchVend && matchBdr && matchOrig && matchEtapa && isGanho && matchDataGanho;
+  });
+
+  atualizarKPIs();
+  renderizarGraficoEvolucaoMensal();
+  renderizarGraficosRegraNegocio();
+  povoarTabelaFoco(dadosFiltradosCriados);
+  povoarTabelaGeral(dadosFiltradosCriados);
 }
 
 function filtrarPorData(dataIso, filtro) {
@@ -257,15 +266,35 @@ function filtrarPorData(dataIso, filtro) {
   return true;
 }
 
-function atualizarKPIs(dados) {
-  document.getElementById("kpi-criados").innerText = dados.length;
-  document.getElementById("kpi-ganhos").innerText = dados.filter(d => String(d.status).toLowerCase() === "ganho").length;
-  document.getElementById("kpi-perdidos").innerText = dados.filter(d => String(d.status).toLowerCase() === "perdido").length;
-  document.getElementById("kpi-aberto").innerText = dados.filter(d => String(d.status).toLowerCase() === "aberto").length;
+// CÁLCULO DE KPIS + TAXA DE CONVERSÃO NO MESMO PERÍODO
+function atualizarKPIs() {
+  const totalCriados = dadosFiltradosCriados.length;
+  const totalGanhosDataGanho = dadosFiltradosGanhos.length;
+  const totalPerdidos = dadosFiltradosCriados.filter(d => String(d.status).toLowerCase() === "perdido").length;
+  const totalAberto = dadosFiltradosCriados.filter(d => String(d.status).toLowerCase() === "aberto").length;
+
+  // Conversão Safra: Criados no período que foram ganhos no mesmo período
+  const ganhosMesmoPeriodo = dadosFiltradosCriados.filter(d => {
+    const isGanho = String(d.status).toLowerCase() === "ganho";
+    const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
+    const fechouMesmoPeriodo = filtrarPorData(d.dataEntradaEtapa || d.dataCriacao, dataOpt);
+    return isGanho && fechouMesmoPeriodo;
+  }).length;
+
+  let taxaConversao = 0;
+  if (totalCriados > 0) {
+    taxaConversao = ((ganhosMesmoPeriodo / totalCriados) * 100).toFixed(1);
+  }
+
+  document.getElementById("kpi-criados").innerText = totalCriados;
+  document.getElementById("kpi-ganhos").innerText = totalGanhosDataGanho;
+  document.getElementById("kpi-perdidos").innerText = totalPerdidos;
+  document.getElementById("kpi-aberto").innerText = totalAberto;
+  document.getElementById("kpi-conversao").innerText = `${taxaConversao}%`;
 }
 
 // GRÁFICO DE LINHAS: EVOLUÇÃO MÊS A MÊS
-function renderizarGraficoEvolucaoMensal(dados) {
+function renderizarGraficoEvolucaoMensal() {
   const canvas = document.getElementById("chartEvolucao");
   if (!canvas) return;
 
@@ -274,17 +303,27 @@ function renderizarGraficoEvolucaoMensal(dados) {
   const ganhosMes = {};
   const perdidosMes = {};
 
-  dados.forEach(d => {
+  dadosFiltradosCriados.forEach(d => {
     if (!d.dataCriacao) return;
     const dt = new Date(d.dataCriacao);
     if (isNaN(dt.getTime())) return;
 
     const anoMes = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
     mesesSet.add(anoMes);
-
     criadosMes[anoMes] = (criadosMes[anoMes] || 0) + 1;
-    if (String(d.status).toLowerCase() === 'ganho') ganhosMes[anoMes] = (ganhosMes[anoMes] || 0) + 1;
     if (String(d.status).toLowerCase() === 'perdido') perdidosMes[anoMes] = (perdidosMes[anoMes] || 0) + 1;
+  });
+
+  // Ganhos pela data de entrada na etapa Ganho
+  dadosFiltradosGanhos.forEach(d => {
+    const dataRef = d.dataEntradaEtapa || d.dataCriacao;
+    if (!dataRef) return;
+    const dt = new Date(dataRef);
+    if (isNaN(dt.getTime())) return;
+
+    const anoMes = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+    mesesSet.add(anoMes);
+    ganhosMes[anoMes] = (ganhosMes[anoMes] || 0) + 1;
   });
 
   const mesesOrdenados = Array.from(mesesSet).sort();
@@ -345,15 +384,14 @@ function renderizarGraficoEvolucaoMensal(dados) {
 }
 
 // Rankings por Barras
-function renderizarGraficosRegraNegocio(dados) {
-  const dadosGanhos = dados.filter(d => String(d.status).toLowerCase() === 'ganho');
-  gerarChartBar('chartVendedor', agruparEOrdenar(dadosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
+function renderizarGraficosRegraNegocio() {
+  gerarChartBar('chartVendedor', agruparEOrdenar(dadosFiltradosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
 
-  gerarChartBar('chartBDR', agruparEOrdenar(dados, 'bdr'), 'Criados por BDR', '#38bdf8');
+  gerarChartBar('chartBDR', agruparEOrdenar(dadosFiltradosCriados, 'bdr'), 'Criados por BDR', '#38bdf8');
 
-  gerarChartBar('chartOrigem', agruparEOrdenar(dados, 'origem'), 'Criados por Origem', '#f59e0b');
+  gerarChartBar('chartOrigem', agruparEOrdenar(dadosFiltradosCriados, 'origem'), 'Criados por Origem', '#f59e0b');
 
-  const dadosPerdidos = dados.filter(d => String(d.status).toLowerCase() === 'perdido');
+  const dadosPerdidos = dadosFiltradosCriados.filter(d => String(d.status).toLowerCase() === 'perdido');
   gerarChartBar('chartPerdidos', agruparEOrdenar(dadosPerdidos, 'motivoPerda'), 'Perdidos por Motivo', '#f43f5e');
 }
 
@@ -403,7 +441,7 @@ function gerarChartBar(canvasId, agrupaObj, label, corHex) {
   });
 }
 
-// TABELA NOVE: OPORTUNIDADES EM FOCO (Assinatura, Proposta e Negociação)
+// TABELA OPORTUNIDADES EM FOCO
 function povoarTabelaFoco(dados) {
   const tbody = document.getElementById("table-foco").querySelector("tbody");
   tbody.innerHTML = "";
@@ -438,7 +476,7 @@ function povoarTabelaFoco(dados) {
 function filtrarTabelaFoco(termo) {
   const txt = termo.toLowerCase();
   const etapasFoco = ['assinatura', 'proposta', 'negociação', 'negociacao'];
-  const dadosFoco = dadosFiltrados.filter(d => etapasFoco.includes(String(d.etapa).toLowerCase()));
+  const dadosFoco = dadosFiltradosCriados.filter(d => etapasFoco.includes(String(d.etapa).toLowerCase()));
   
   const filtrados = dadosFoco.filter(d => {
     return (
@@ -494,7 +532,7 @@ function povoarTabelaGeral(dados) {
 
 function filtrarTabelaGeral(termo) {
   const txt = termo.toLowerCase();
-  const filtrados = dadosFiltrados.filter(d => {
+  const filtrados = dadosFiltradosCriados.filter(d => {
     return (
       (d.conta && d.conta.toLowerCase().includes(txt)) ||
       (d.vendedor && d.vendedor.toLowerCase().includes(txt)) ||
@@ -508,24 +546,32 @@ function filtrarTabelaGeral(termo) {
   povoarTabelaGeral(filtrados);
 }
 
-// MODAL / POPUP KPIS CLICÁVEIS
+// MODAL / POPUP KPIS CLICÁVEIS (INCLUINDO SUPORTE A TAXA DE CONVERSÃO SAFRA)
 function abrirModalDetalhes(tipoKpi) {
   const modal = document.getElementById("modal-detalhes");
   if (!modal) return;
   
+  const tipo = String(tipoKpi).trim().toLowerCase();
   document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${tipoKpi}`;
   
   let listaModal = [];
-  const tipo = String(tipoKpi).trim().toLowerCase();
 
   if (tipo === 'criados') {
-    listaModal = dadosFiltrados;
+    listaModal = dadosFiltradosCriados;
   } else if (tipo === 'ganhos') {
-    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'ganho');
+    listaModal = dadosFiltradosGanhos;
   } else if (tipo === 'perdidos') {
-    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'perdido');
+    listaModal = dadosFiltradosCriados.filter(d => String(d.status).toLowerCase() === 'perdido');
   } else if (tipo === 'em aberto' || tipo === 'aberto') {
-    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'aberto');
+    listaModal = dadosFiltradosCriados.filter(d => String(d.status).toLowerCase() === 'aberto');
+  } else if (tipo === 'conversaosafra' || tipo === 'conversao') {
+    document.getElementById("modal-titulo").innerText = `Detalhamento: Convertidos na Mesma Safra`;
+    const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
+    listaModal = dadosFiltradosCriados.filter(d => {
+      const isGanho = String(d.status).toLowerCase() === "ganho";
+      const fechouMesmoPeriodo = filtrarPorData(d.dataEntradaEtapa || d.dataCriacao, dataOpt);
+      return isGanho && fechouMesmoPeriodo;
+    });
   }
   
   const tbodyModal = document.getElementById("tbody-modal");
@@ -573,7 +619,6 @@ function ordenarTabela(tableId, colIndex) {
   direcaoOrdenacao[chave] = direcaoOrdenacao[chave] === "asc" ? "desc" : "asc";
   const asc = direcaoOrdenacao[chave] === "asc";
 
-  // Atualizar ícones visuais nos cabeçalhos
   const ths = table.querySelectorAll("th");
   ths.forEach((th, idx) => {
     const iconSpan = th.querySelector(".sort-icon");
@@ -592,7 +637,6 @@ function ordenarTabela(tableId, colIndex) {
     const cellA = a.children[colIndex] ? a.children[colIndex].innerText.trim() : "";
     const cellB = b.children[colIndex] ? b.children[colIndex].innerText.trim() : "";
 
-    // Expressão Regular para Data Brasileira DD/MM/AAAA HH:mm
     const regexData = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/;
     const matchA = cellA.match(regexData);
     const matchB = cellB.match(regexData);
@@ -603,7 +647,6 @@ function ordenarTabela(tableId, colIndex) {
       return asc ? dateA - dateB : dateB - dateA;
     }
 
-    // Tentar comparação Numérica
     const numA = Number(cellA.replace(',', '.'));
     const numB = Number(cellB.replace(',', '.'));
 
@@ -611,20 +654,18 @@ function ordenarTabela(tableId, colIndex) {
       return asc ? numA - numB : numB - numA;
     }
 
-    // Comparação Alfabética em Português
     return asc 
       ? cellA.localeCompare(cellB, 'pt-BR', { numeric: true, sensitivity: 'base' })
       : cellB.localeCompare(cellA, 'pt-BR', { numeric: true, sensitivity: 'base' });
   });
 
-  // Re-inserir as linhas ordenadas
   rows.forEach(row => tbody.appendChild(row));
 }
 
 // Exportar CSV
 function exportarCSV() {
   let csv = "Conta,Vendedor,Origem,BDR,Etapa,Status,Data Criacao,Entrada Etapa Atual,Motivo Perda\n";
-  dadosFiltrados.forEach(row => {
+  dadosFiltradosCriados.forEach(row => {
     csv += `"${row.conta}","${row.vendedor}","${row.origem}","${row.bdr}","${row.etapa}","${row.status}","${formatarDataBR(row.dataCriacao)}","${formatarDataBR(row.dataEntradaEtapa)}","${row.motivoPerda}"\n`;
   });
   
