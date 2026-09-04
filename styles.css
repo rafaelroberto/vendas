@@ -56,7 +56,7 @@ body {
 /* Filtros */
 .filters-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   background: var(--bg-card);
   padding: 18px;
@@ -87,7 +87,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .custom-dropdown {
@@ -101,8 +101,9 @@ body {
   border-radius: 8px;
   z-index: 100;
   margin-top: 4px;
-  padding: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  padding: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  min-width: 220px;
 }
 
 .custom-dropdown.open { display: block; }
@@ -118,9 +119,34 @@ body {
   outline: none;
 }
 
-.options-list { max-height: 180px; overflow-y: auto; }
-.option-item { padding: 8px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-.option-item:hover { background: var(--bg-hover); color: var(--accent-blue); }
+.actions-dropdown {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.options-list { max-height: 200px; overflow-y: auto; }
+
+.option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.option-checkbox:hover { background: var(--bg-hover); border-radius: 4px; }
+.option-checkbox input { accent-color: var(--accent-blue); }
 
 /* KPIs */
 .kpi-grid {
@@ -155,6 +181,11 @@ body {
 .kpi-tag.warning { background: rgba(245,158,11,0.1); color: var(--accent-yellow); }
 
 .kpi-value { font-size: 2.2rem; font-weight: 700; display: block; margin-top: 12px; }
+
+/* Evolução Mensal */
+.evolution-section { margin-bottom: 24px; }
+.card-full-width { width: 100%; }
+.chart-container-large { position: relative; height: 320px; width: 100%; }
 
 /* Grid de Charts */
 .charts-grid {
