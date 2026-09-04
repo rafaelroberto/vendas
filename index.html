@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard BI Comercial - Puca CRM</title>
+  <title>Dashboard BI Comercial - LifeApps</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -23,11 +23,15 @@
 
   <div class="dashboard-container">
     
-    <!-- Cabeçalho -->
+    <!-- Cabeçalho com Logo -->
     <header class="header">
-      <div class="brand">
-        <h1>Dashboard Comercial</h1>
-        <p class="subtitle">B.I. de Performance de Vendas</p>
+      <div class="brand-container">
+        <!-- Logo da empresa integrada em SVG/Base64 -->
+        <img id="company-logo" class="logo-img" alt="LifeApps Logo" src="logo.png">
+        <div class="brand-text">
+          <h1>Dashboard Comercial</h1>
+          <p class="subtitle">B.I. de Performance de Vendas</p>
+        </div>
       </div>
       <div class="actions">
         <button id="btn-sync" class="btn btn-primary" onclick="carregarDados()">
@@ -41,7 +45,6 @@
 
     <!-- Barra de Filtros Avançados -->
     <section class="filters-bar">
-      <!-- Filtro de Data -->
       <div class="filter-group">
         <label>Período</label>
         <select id="filter-date" onchange="aplicarFiltros()">
@@ -55,7 +58,6 @@
         </select>
       </div>
 
-      <!-- Multi-select Vendedor -->
       <div class="filter-group custom-select-container">
         <label>Vendedores</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-vendedor')">
@@ -71,7 +73,6 @@
         </div>
       </div>
 
-      <!-- Multi-select BDR -->
       <div class="filter-group custom-select-container">
         <label>BDRs / SDRs</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-bdr')">
@@ -87,7 +88,6 @@
         </div>
       </div>
 
-      <!-- Multi-select Origem -->
       <div class="filter-group custom-select-container">
         <label>Origens / Indicadores</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-origem')">
@@ -103,7 +103,6 @@
         </div>
       </div>
 
-      <!-- Multi-select Etapa -->
       <div class="filter-group custom-select-container">
         <label>Etapas do Funil</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-etapa')">
@@ -119,7 +118,6 @@
         </div>
       </div>
 
-      <!-- Botão de Reset de Filtros -->
       <div class="filter-group filter-group-btn">
         <button class="btn btn-reset-filters" onclick="resetarTodosFiltros()">
           🧹 Limpar todos os filtros
@@ -220,7 +218,9 @@
                 <th onclick="ordenarTabela('table-geral', 3)">BDR ⇕</th>
                 <th onclick="ordenarTabela('table-geral', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-geral', 5)">Status ⇕</th>
-                <th onclick="ordenarTabela('table-geral', 6)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 6)">Data Criação ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 7)">Entrada Etapa Atual ⇕</th>
+                <th onclick="ordenarTabela('table-geral', 8)">Motivo Perda ⇕</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -246,7 +246,9 @@
                 <th onclick="ordenarTabela('table-modal', 3)">BDR ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 4)">Etapa ⇕</th>
                 <th onclick="ordenarTabela('table-modal', 5)">Status ⇕</th>
-                <th onclick="ordenarTabela('table-modal', 6)">Motivo Perda ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 6)">Data Criação ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 7)">Entrada Etapa Atual ⇕</th>
+                <th onclick="ordenarTabela('table-modal', 8)">Motivo Perda ⇕</th>
               </tr>
             </thead>
             <tbody id="tbody-modal"></tbody>
