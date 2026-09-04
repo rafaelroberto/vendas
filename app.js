@@ -13,7 +13,6 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVI
 window.onload = () => {
   carregarDados();
   
-  // Fechar dropdowns ao clicar fora
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.custom-select-container')) {
       document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
@@ -21,24 +20,59 @@ window.onload = () => {
   });
 };
 
+// SIMULADOR DE PROGRESSO + BUSCA REAL DE DADOS
 async function carregarDados() {
-  const btnSync = document.getElementById("btn-sync");
-  if (btnSync) btnSync.innerText = "⏳ Carregando...";
+  exibirLoadingOverlay();
+
+  let progresso = 0;
+  const interval = setInterval(() => {
+    if (progresso < 90) {
+      progresso += Math.floor(Math.random() * 15) + 5;
+      if (progresso > 90) progresso = 90;
+      atualizarProgressoLoading(progresso);
+    }
+  }, 150);
 
   try {
     const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
     dadosGlobais = await res.json();
     
-    inicializarFiltrosMultiplos(dadosGlobais);
-    aplicarFiltros();
+    clearInterval(interval);
+    atualizarProgressoLoading(100);
+
+    setTimeout(() => {
+      inicializarFiltrosMultiplos(dadosGlobais);
+      aplicarFiltros();
+      esconderLoadingOverlay();
+    }, 300);
+
   } catch (err) {
+    clearInterval(interval);
     console.error("Erro ao carregar dados:", err);
-  } finally {
-    if (btnSync) btnSync.innerHTML = '<span class="icon">🔄</span> Atualizar dados';
+    alert("Erro ao conectar com o Google Sheets. Tente atualizar novamente.");
+    esconderLoadingOverlay();
   }
 }
 
-// Inicializa os Filtros Multi-Select com Checkbox
+function exibirLoadingOverlay() {
+  const overlay = document.getElementById("loading-overlay");
+  if (overlay) overlay.classList.remove("hidden");
+  atualizarProgressoLoading(0);
+}
+
+function esconderLoadingOverlay() {
+  const overlay = document.getElementById("loading-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function atualizarProgressoLoading(percent) {
+  const bar = document.getElementById("progress-bar");
+  const txt = document.getElementById("loading-percent");
+  if (bar) bar.style.width = `${percent}%`;
+  if (txt) txt.innerText = `${percent}%`;
+}
+
+// FILTROS MULTI-SELECT
 function inicializarFiltrosMultiplos(dados) {
   const vendedores = [...new Set(dados.map(d => d.vendedor))].filter(Boolean).sort();
   const bdrs = [...new Set(dados.map(d => d.bdr))].filter(Boolean).sort();
@@ -54,6 +88,15 @@ function inicializarFiltrosMultiplos(dados) {
   povoarCheckboxList('options-bdr', bdrs, 'bdr');
   povoarCheckboxList('options-origem', origens, 'origem');
   povoarCheckboxList('options-etapa', etapas, 'etapa');
+
+  resetarLabelsSelect();
+}
+
+function resetarLabelsSelect() {
+  ['vendedor', 'bdr', 'origem', 'etapa'].forEach(c => {
+    const labelEl = document.getElementById(`label-${c}`);
+    if (labelEl) labelEl.innerText = "Todos selecionados";
+  });
 }
 
 function povoarCheckboxList(containerId, lista, campo) {
@@ -110,10 +153,25 @@ function atualizarSelecaoMultipla(campo) {
   aplicarFiltros();
 }
 
-function limparSelecao(campo) {
+function limparSelecaoIndividual(campo) {
   const container = document.getElementById(`options-${campo}`);
   container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   atualizarSelecaoMultipla(campo);
+}
+
+// LIMPAR TODOS OS FILTROS DA PÁGINA
+function resetarTodosFiltros() {
+  document.getElementById('filter-date').value = 'todo_periodo';
+
+  ['vendedor', 'bdr', 'origem', 'etapa'].forEach(campo => {
+    const container = document.getElementById(`options-${campo}`);
+    if (container) {
+      container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+    }
+  });
+
+  inicializarFiltrosMultiplos(dadosGlobais);
+  aplicarFiltros();
 }
 
 function aplicarFiltros() {
@@ -168,9 +226,9 @@ function filtrarPorData(dataIso, filtro) {
 
 function atualizarKPIs(dados) {
   document.getElementById("kpi-criados").innerText = dados.length;
-  document.getElementById("kpi-ganhos").innerText = dados.filter(d => d.status === "Ganho").length;
-  document.getElementById("kpi-perdidos").innerText = dados.filter(d => d.status === "Perdido").length;
-  document.getElementById("kpi-aberto").innerText = dados.filter(d => d.status === "Aberto").length;
+  document.getElementById("kpi-ganhos").innerText = dados.filter(d => String(d.status).toLowerCase() === "ganho").length;
+  document.getElementById("kpi-perdidos").innerText = dados.filter(d => String(d.status).toLowerCase() === "perdido").length;
+  document.getElementById("kpi-aberto").innerText = dados.filter(d => String(d.status).toLowerCase() === "aberto").length;
 }
 
 // GRÁFICO DE LINHAS: EVOLUÇÃO MÊS A MÊS
@@ -178,7 +236,6 @@ function renderizarGraficoEvolucaoMensal(dados) {
   const canvas = document.getElementById("chartEvolucao");
   if (!canvas) return;
 
-  // Agrupar dados por YYYY-MM
   const mesesSet = new Set();
   const criadosMes = {};
   const ganhosMes = {};
@@ -193,13 +250,11 @@ function renderizarGraficoEvolucaoMensal(dados) {
     mesesSet.add(anoMes);
 
     criadosMes[anoMes] = (criadosMes[anoMes] || 0) + 1;
-    if (d.status === 'Ganho') ganhosMes[anoMes] = (ganhosMes[anoMes] || 0) + 1;
-    if (d.status === 'Perdido') perdidosMes[anoMes] = (perdidosMes[anoMes] || 0) + 1;
+    if (String(d.status).toLowerCase() === 'ganho') ganhosMes[anoMes] = (ganhosMes[anoMes] || 0) + 1;
+    if (String(d.status).toLowerCase() === 'perdido') perdidosMes[anoMes] = (perdidosMes[anoMes] || 0) + 1;
   });
 
   const mesesOrdenados = Array.from(mesesSet).sort();
-  
-  // Formatador para exibição (Ex: "12/2024")
   const labelsExibicao = mesesOrdenados.map(m => {
     const [ano, mes] = m.split('-');
     return `${mes}/${ano}`;
@@ -247,9 +302,7 @@ function renderizarGraficoEvolucaoMensal(dados) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#f8fafc' } }
-      },
+      plugins: { legend: { labels: { color: '#f8fafc' } } },
       scales: {
         x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
         y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
@@ -260,14 +313,14 @@ function renderizarGraficoEvolucaoMensal(dados) {
 
 // Rankings por Barras
 function renderizarGraficosRegraNegocio(dados) {
-  const dadosGanhos = dados.filter(d => d.status === 'Ganho');
+  const dadosGanhos = dados.filter(d => String(d.status).toLowerCase() === 'ganho');
   gerarChartBar('chartVendedor', agruparEOrdenar(dadosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
 
   gerarChartBar('chartBDR', agruparEOrdenar(dados, 'bdr'), 'Criados por BDR', '#38bdf8');
 
   gerarChartBar('chartOrigem', agruparEOrdenar(dados, 'origem'), 'Criados por Origem', '#f59e0b');
 
-  const dadosPerdidos = dados.filter(d => d.status === 'Perdido');
+  const dadosPerdidos = dados.filter(d => String(d.status).toLowerCase() === 'perdido');
   gerarChartBar('chartPerdidos', agruparEOrdenar(dadosPerdidos, 'motivoPerda'), 'Perdidos por Motivo', '#f43f5e');
 }
 
@@ -325,13 +378,13 @@ function povoarTabelaGeral(dados) {
   dados.forEach(row => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${row.conta}</td>
-      <td>${row.vendedor}</td>
-      <td>${row.origem}</td>
-      <td>${row.bdr}</td>
-      <td>${row.etapa}</td>
-      <td>${row.status}</td>
-      <td>${row.motivoPerda}</td>
+      <td>${row.conta || '-'}</td>
+      <td>${row.vendedor || '-'}</td>
+      <td>${row.origem || '-'}</td>
+      <td>${row.bdr || '-'}</td>
+      <td>${row.etapa || '-'}</td>
+      <td>${row.status || '-'}</td>
+      <td>${row.motivoPerda || '-'}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -341,46 +394,60 @@ function filtrarTabelaGeral(termo) {
   const txt = termo.toLowerCase();
   const filtrados = dadosFiltrados.filter(d => {
     return (
-      d.conta.toLowerCase().includes(txt) ||
-      d.vendedor.toLowerCase().includes(txt) ||
-      d.bdr.toLowerCase().includes(txt) ||
-      d.origem.toLowerCase().includes(txt) ||
-      d.etapa.toLowerCase().includes(txt) ||
-      d.status.toLowerCase().includes(txt) ||
-      d.motivoPerda.toLowerCase().includes(txt)
+      (d.conta && d.conta.toLowerCase().includes(txt)) ||
+      (d.vendedor && d.vendedor.toLowerCase().includes(txt)) ||
+      (d.bdr && d.bdr.toLowerCase().includes(txt)) ||
+      (d.origem && d.origem.toLowerCase().includes(txt)) ||
+      (d.etapa && d.etapa.toLowerCase().includes(txt)) ||
+      (d.status && d.status.toLowerCase().includes(txt)) ||
+      (d.motivoPerda && d.motivoPerda.toLowerCase().includes(txt))
     );
   });
   povoarTabelaGeral(filtrados);
 }
 
-// MODAL / POPUP KPIS CLICÁVEIS (REVISADO)
-function abrirModalDetalhes(status) {
+// MODAL / POPUP KPIS CLICÁVEIS (CORRIGIDO)
+function abrirModalDetalhes(tipoKpi) {
   const modal = document.getElementById("modal-detalhes");
   if (!modal) return;
   
-  document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${status}`;
+  document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${tipoKpi}`;
   
-  let listaModal = dadosFiltrados;
-  if (status !== 'Criados') {
-    listaModal = dadosFiltrados.filter(d => d.status === status);
+  let listaModal = [];
+  const tipo = String(tipoKpi).trim().toLowerCase();
+
+  if (tipo === 'criados') {
+    listaModal = dadosFiltrados;
+  } else if (tipo === 'ganhos') {
+    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'ganho');
+  } else if (tipo === 'perdidos') {
+    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'perdido');
+  } else if (tipo === 'em aberto' || tipo === 'aberto') {
+    listaModal = dadosFiltrados.filter(d => String(d.status).toLowerCase() === 'aberto');
   }
   
   const tbodyModal = document.getElementById("tbody-modal");
   tbodyModal.innerHTML = "";
   
-  listaModal.forEach(row => {
+  if (listaModal.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.conta}</td>
-      <td>${row.vendedor}</td>
-      <td>${row.origem}</td>
-      <td>${row.bdr}</td>
-      <td>${row.etapa}</td>
-      <td>${row.status}</td>
-      <td>${row.motivoPerda}</td>
-    `;
+    tr.innerHTML = `<td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Nenhum registro encontrado para este filtro.</td>`;
     tbodyModal.appendChild(tr);
-  });
+  } else {
+    listaModal.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${row.conta || '-'}</td>
+        <td>${row.vendedor || '-'}</td>
+        <td>${row.origem || '-'}</td>
+        <td>${row.bdr || '-'}</td>
+        <td>${row.etapa || '-'}</td>
+        <td>${row.status || '-'}</td>
+        <td>${row.motivoPerda || '-'}</td>
+      `;
+      tbodyModal.appendChild(tr);
+    });
+  }
   
   modal.style.display = "flex";
 }
