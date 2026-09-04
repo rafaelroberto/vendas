@@ -1,4 +1,5 @@
 let dadosGlobais = [];
+let dadosFiltrados = [];
 let filtrosAtivos = { vendedor: '', bdr: '', origem: '' };
 let charts = {};
 
@@ -7,7 +8,6 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVI
 window.onload = () => {
   carregarDados();
   
-  // Fechar dropdowns ao clicar fora
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.custom-select-container')) {
       document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
@@ -20,23 +20,18 @@ async function carregarDados() {
   if (btnSync) btnSync.innerText = "⏳ Carregando...";
 
   try {
-    // redirect: 'follow' é fundamental para requisições ao Google Apps Script
     const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
     dadosGlobais = await res.json();
-    
-    console.log("Dados carregados com sucesso:", dadosGlobais.length, "registros.");
     
     preencherOpcoesFiltros(dadosGlobais);
     aplicarFiltros();
   } catch (err) {
-    console.error("Erro ao buscar dados do Google Sheets:", err);
-    alert("Erro ao carregar dados. Verifique o console ou a permissão do Apps Script.");
+    console.error("Erro ao carregar dados:", err);
   } finally {
     if (btnSync) btnSync.innerHTML = '<span class="icon">🔄</span> Atualizar dados';
   }
 }
 
-// Preenche os selects customizados com pesquisa interna
 function preencherOpcoesFiltros(dados) {
   const vendedores = [...new Set(dados.map(d => d.vendedor))].filter(Boolean).sort();
   const bdrs = [...new Set(dados.map(d => d.bdr))].filter(Boolean).sort();
@@ -90,7 +85,7 @@ function selecionarFiltro(campo, valor, label) {
 function aplicarFiltros() {
   const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
   
-  const filtrados = dadosGlobais.filter(item => {
+  dadosFiltrados = dadosGlobais.filter(item => {
     const matchVend = !filtrosAtivos.vendedor || item.vendedor === filtrosAtivos.vendedor;
     const matchBdr = !filtrosAtivos.bdr || item.bdr === filtrosAtivos.bdr;
     const matchOrig = !filtrosAtivos.origem || item.origem === filtrosAtivos.origem;
@@ -98,9 +93,9 @@ function aplicarFiltros() {
     return matchVend && matchBdr && matchOrig && matchData;
   });
 
-  atualizarKPIs(filtrados);
-  renderizarTabelas(filtrados);
-  renderizarGraficos(filtrados);
+  atualizarKPIs(dadosFiltrados);
+  renderizarGraficosRegraNegocio(dadosFiltrados);
+  povoarTabelaGeral(dadosFiltrados);
 }
 
 function filtrarPorData(dataIso, filtro) {
@@ -141,51 +136,38 @@ function atualizarKPIs(dados) {
   document.getElementById("kpi-aberto").innerText = dados.filter(d => d.status === "Aberto").length;
 }
 
-function renderizarTabelas(dados) {
-  povoarTabela("table-vendedor", dados);
-  povoarTabela("table-bdr", dados);
-  povoarTabela("table-origem", dados);
-  povoarTabela("table-perdidos", dados.filter(d => d.status === "Perdido"));
+// Lógica de Negócio dos Rankings
+function renderizarGraficosRegraNegocio(dados) {
+  // 1. Ranking Vendedor: APENAS OPORTUNIDADES GANHAS
+  const dadosGanhos = dados.filter(d => d.status === 'Ganho');
+  gerarChart('chartVendedor', agruparEOrdenar(dadosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
+
+  // 2. Ranking BDR: TODAS AS OPORTUNIDADES CRIADAS
+  gerarChart('chartBDR', agruparEOrdenar(dados, 'bdr'), 'Criados por BDR', '#38bdf8');
+
+  // 3. Ranking Origem: TODAS AS OPORTUNIDADES CRIADAS
+  gerarChart('chartOrigem', agruparEOrdenar(dados, 'origem'), 'Criados por Origem', '#f59e0b');
+
+  // 4. Ranking Perdidos: APENAS PERDIDOS, AGRUPADOS POR MOTIVO
+  const dadosPerdidos = dados.filter(d => d.status === 'Perdido');
+  gerarChart('chartPerdidos', agruparEOrdenar(dadosPerdidos, 'motivoPerda'), 'Perdidos por Motivo', '#f43f5e');
 }
 
-function povoarTabela(tableId, dados) {
-  const table = document.getElementById(tableId);
-  if (!table) return;
-  
-  const tbody = table.querySelector("tbody");
-  tbody.innerHTML = "";
-  
-  dados.slice(0, 15).forEach(row => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.conta}</td>
-      <td>${row.vendedor}</td>
-      <td>${row.origem}</td>
-      <td>${row.bdr}</td>
-      <td>${row.etapa}</td>
-      <td>${row.motivoPerda}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function renderizarGraficos(dados) {
-  gerarChart('chartVendedor', agruparPor(dados, 'vendedor'), 'Vendedores');
-  gerarChart('chartBDR', agruparPor(dados, 'bdr'), 'BDRs');
-  gerarChart('chartOrigem', agruparPor(dados, 'origem'), 'Origens');
-  gerarChart('chartPerdidos', agruparPor(dados.filter(d => d.status === 'Perdido'), 'motivoPerda'), 'Motivos de Perda');
-}
-
-function agruparPor(dados, chave) {
+function agruparEOrdenar(dados, chave) {
   const counts = {};
   dados.forEach(d => {
-    const val = d[chave] || 'Não informado';
+    let val = d[chave] || 'Não informado';
+    if (val === '-' || val === '') val = 'Não Informado';
     counts[val] = (counts[val] || 0) + 1;
   });
-  return counts;
+
+  // Ordena do Maior para o Menor
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});
 }
 
-function gerarChart(canvasId, agrupaObj, label) {
+function gerarChart(canvasId, agrupaObj, label, corHex) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   
@@ -202,7 +184,7 @@ function gerarChart(canvasId, agrupaObj, label) {
       datasets: [{
         label: label,
         data: data,
-        backgroundColor: '#38bdf8',
+        backgroundColor: corHex || '#38bdf8',
         borderRadius: 4
       }]
     },
@@ -218,24 +200,9 @@ function gerarChart(canvasId, agrupaObj, label) {
   });
 }
 
-// Modal Clicável dos KPIs
-function abrirModalDetalhes(status) {
-  const modal = document.getElementById("modal-detalhes");
-  if (!modal) return;
-  
-  document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${status}`;
-  
-  let filtrados = dadosGlobais;
-  if (status !== 'Criados') {
-    filtrados = dadosGlobais.filter(d => d.status === status);
-  }
-  
-  povoarTabelaModal("table-modal", filtrados);
-  modal.style.display = "flex";
-}
-
-function povoarTabelaModal(tableId, dados) {
-  const tbody = document.getElementById(tableId).querySelector("tbody");
+// Tabela Geral de Detalhamento de Contas
+function povoarTabelaGeral(dados) {
+  const tbody = document.getElementById("table-geral").querySelector("tbody");
   tbody.innerHTML = "";
   
   dados.forEach(row => {
@@ -246,10 +213,59 @@ function povoarTabelaModal(tableId, dados) {
       <td>${row.origem}</td>
       <td>${row.bdr}</td>
       <td>${row.etapa}</td>
+      <td><span class="status-badge status-${row.status.toLowerCase().replace(' ', '')}">${row.status}</span></td>
       <td>${row.motivoPerda}</td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function filtrarTabelaGeral(termo) {
+  const txt = termo.toLowerCase();
+  const filtrados = dadosFiltrados.filter(d => {
+    return (
+      d.conta.toLowerCase().includes(txt) ||
+      d.vendedor.toLowerCase().includes(txt) ||
+      d.bdr.toLowerCase().includes(txt) ||
+      d.origem.toLowerCase().includes(txt) ||
+      d.etapa.toLowerCase().includes(txt) ||
+      d.status.toLowerCase().includes(txt) ||
+      d.motivoPerda.toLowerCase().includes(txt)
+    );
+  });
+  povoarTabelaGeral(filtrados);
+}
+
+// MODAL / POPUP DE KPIS CLICÁVEIS (Corrigido para preencher linhas)
+function abrirModalDetalhes(status) {
+  const modal = document.getElementById("modal-detalhes");
+  if (!modal) return;
+  
+  document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${status}`;
+  
+  let listaModal = dadosFiltrados;
+  if (status !== 'Criados') {
+    listaModal = dadosFiltrados.filter(d => d.status === status);
+  }
+  
+  const tbodyModal = document.getElementById("tbody-modal");
+  tbodyModal.innerHTML = "";
+  
+  listaModal.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.conta}</td>
+      <td>${row.vendedor}</td>
+      <td>${row.origem}</td>
+      <td>${row.bdr}</td>
+      <td>${row.etapa}</td>
+      <td>${row.status}</td>
+      <td>${row.motivoPerda}</td>
+    `;
+    tbodyModal.appendChild(tr);
+  });
+  
+  modal.style.display = "flex";
 }
 
 function fecharModal() {
@@ -257,7 +273,7 @@ function fecharModal() {
   if (modal) modal.style.display = "none";
 }
 
-// Ordenação Interativa de Tabelas (Maior / Menor)
+// Ordenação de Tabelas por Coluna (Maior / Menor)
 function ordenarTabela(tableId, colIndex) {
   const table = document.getElementById(tableId);
   let rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
@@ -294,10 +310,10 @@ function ordenarTabela(tableId, colIndex) {
   }
 }
 
-// Exportação em CSV
+// Exportar CSV
 function exportarCSV() {
   let csv = "Conta,Vendedor,Origem,BDR,Etapa,Status,Motivo Perda\n";
-  dadosGlobais.forEach(row => {
+  dadosFiltrados.forEach(row => {
     csv += `"${row.conta}","${row.vendedor}","${row.origem}","${row.bdr}","${row.etapa}","${row.status}","${row.motivoPerda}"\n`;
   });
   
