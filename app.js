@@ -2,12 +2,12 @@ let dadosGlobais = [];
 let filtrosAtivos = { vendedor: '', bdr: '', origem: '' };
 let charts = {};
 
-// Cole aqui a URL gerada na Implantação do Google Apps Script
 const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5L5eTew/exec";
 
 window.onload = () => {
   carregarDados();
-  // Listener para fechar dropdowns customizados ao clicar fora
+  
+  // Fechar dropdowns ao clicar fora
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.custom-select-container')) {
       document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
@@ -16,17 +16,27 @@ window.onload = () => {
 };
 
 async function carregarDados() {
+  const btnSync = document.getElementById("btn-sync");
+  if (btnSync) btnSync.innerText = "⏳ Carregando...";
+
   try {
-    const res = await fetch(SHEETS_ENDPOINT);
+    // redirect: 'follow' é fundamental para requisições ao Google Apps Script
+    const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
     dadosGlobais = await res.json();
+    
+    console.log("Dados carregados com sucesso:", dadosGlobais.length, "registros.");
+    
     preencherOpcoesFiltros(dadosGlobais);
     aplicarFiltros();
   } catch (err) {
-    console.error("Erro ao buscar dados do Apps Script:", err);
+    console.error("Erro ao buscar dados do Google Sheets:", err);
+    alert("Erro ao carregar dados. Verifique o console ou a permissão do Apps Script.");
+  } finally {
+    if (btnSync) btnSync.innerHTML = '<span class="icon">🔄</span> Atualizar dados';
   }
 }
 
-// Preenche as opções dos filtros com busca interna
+// Preenche os selects customizados com pesquisa interna
 function preencherOpcoesFiltros(dados) {
   const vendedores = [...new Set(dados.map(d => d.vendedor))].filter(Boolean).sort();
   const bdrs = [...new Set(dados.map(d => d.bdr))].filter(Boolean).sort();
@@ -39,6 +49,8 @@ function preencherOpcoesFiltros(dados) {
 
 function povoarListaDropdown(elementId, itens, campo, textoPadrao) {
   const container = document.getElementById(elementId);
+  if (!container) return;
+  
   container.innerHTML = `<div class="option-item" onclick="selecionarFiltro('${campo}', '', '${textoPadrao}')">${textoPadrao}</div>`;
   
   itens.forEach(item => {
@@ -54,7 +66,8 @@ function toggleDropdown(id) {
   document.querySelectorAll('.custom-dropdown').forEach(d => {
     if (d.id !== id) d.classList.remove('open');
   });
-  document.getElementById(id).classList.toggle('open');
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
 }
 
 function filtrarListaOptions(input, optionsId) {
@@ -68,13 +81,14 @@ function filtrarListaOptions(input, optionsId) {
 
 function selecionarFiltro(campo, valor, label) {
   filtrosAtivos[campo] = valor;
-  document.getElementById(`label-${campo}`).innerText = label;
+  const labelEl = document.getElementById(`label-${campo}`);
+  if (labelEl) labelEl.innerText = label;
   document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
   aplicarFiltros();
 }
 
 function aplicarFiltros() {
-  const dataOpt = document.getElementById('filter-date').value;
+  const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
   
   const filtrados = dadosGlobais.filter(item => {
     const matchVend = !filtrosAtivos.vendedor || item.vendedor === filtrosAtivos.vendedor;
@@ -92,10 +106,17 @@ function aplicarFiltros() {
 function filtrarPorData(dataIso, filtro) {
   if (filtro === 'todo_periodo' || !dataIso) return true;
   const d = new Date(dataIso);
+  if (isNaN(d.getTime())) return true;
+
   const hoje = new Date();
   
   if (filtro === 'hoje') {
     return d.toDateString() === hoje.toDateString();
+  }
+  if (filtro === 'esta_semana') {
+    const inicioSemana = new Date(hoje);
+    inicioSemana.setDate(hoje.getDate() - hoje.getDay());
+    return d >= inicioSemana;
   }
   if (filtro === 'este_mes') {
     return d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear();
@@ -106,6 +127,9 @@ function filtrarPorData(dataIso, filtro) {
   }
   if (filtro === 'este_ano') {
     return d.getFullYear() === hoje.getFullYear();
+  }
+  if (filtro === 'ano_passado') {
+    return d.getFullYear() === (hoje.getFullYear() - 1);
   }
   return true;
 }
@@ -125,10 +149,12 @@ function renderizarTabelas(dados) {
 }
 
 function povoarTabela(tableId, dados) {
-  const tbody = document.getElementById(tableId).querySelector("tbody");
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  
+  const tbody = table.querySelector("tbody");
   tbody.innerHTML = "";
   
-  // Limita a exibição inicial das tabelas dos cards aos 15 mais recentes
   dados.slice(0, 15).forEach(row => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -160,7 +186,10 @@ function agruparPor(dados, chave) {
 }
 
 function gerarChart(canvasId, agrupaObj, label) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
   const labels = Object.keys(agrupaObj);
   const data = Object.values(agrupaObj);
 
@@ -192,6 +221,8 @@ function gerarChart(canvasId, agrupaObj, label) {
 // Modal Clicável dos KPIs
 function abrirModalDetalhes(status) {
   const modal = document.getElementById("modal-detalhes");
+  if (!modal) return;
+  
   document.getElementById("modal-titulo").innerText = `Detalhamento de Registros: ${status}`;
   
   let filtrados = dadosGlobais;
@@ -199,15 +230,34 @@ function abrirModalDetalhes(status) {
     filtrados = dadosGlobais.filter(d => d.status === status);
   }
   
-  povoarTabela("table-modal", filtrados);
+  povoarTabelaModal("table-modal", filtrados);
   modal.style.display = "flex";
 }
 
-function fecharModal() {
-  document.getElementById("modal-detalhes").style.display = "none";
+function povoarTabelaModal(tableId, dados) {
+  const tbody = document.getElementById(tableId).querySelector("tbody");
+  tbody.innerHTML = "";
+  
+  dados.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.conta}</td>
+      <td>${row.vendedor}</td>
+      <td>${row.origem}</td>
+      <td>${row.bdr}</td>
+      <td>${row.etapa}</td>
+      <td>${row.motivoPerda}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 }
 
-// Ordenação de colunas (Maior / Menor)
+function fecharModal() {
+  const modal = document.getElementById("modal-detalhes");
+  if (modal) modal.style.display = "none";
+}
+
+// Ordenação Interativa de Tabelas (Maior / Menor)
 function ordenarTabela(tableId, colIndex) {
   const table = document.getElementById(tableId);
   let rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
@@ -220,6 +270,8 @@ function ordenarTabela(tableId, colIndex) {
       x = rows[i].getElementsByTagName("TD")[colIndex];
       y = rows[i + 1].getElementsByTagName("TD")[colIndex];
       
+      if (!x || !y) continue;
+
       let xVal = x.innerText.toLowerCase();
       let yVal = y.innerText.toLowerCase();
 
@@ -242,7 +294,7 @@ function ordenarTabela(tableId, colIndex) {
   }
 }
 
-// Exportação CSV
+// Exportação em CSV
 function exportarCSV() {
   let csv = "Conta,Vendedor,Origem,BDR,Etapa,Status,Motivo Perda\n";
   dadosGlobais.forEach(row => {
