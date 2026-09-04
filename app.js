@@ -1,6 +1,11 @@
 let dadosGlobais = [];
 let dadosFiltrados = [];
-let filtrosAtivos = { vendedor: '', bdr: '', origem: '' };
+let selecoesMultiplas = {
+  vendedor: [],
+  bdr: [],
+  origem: [],
+  etapa: []
+};
 let charts = {};
 
 const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVITaiGM1GZDpcjrlto0jPtL8Kd90WCVphT8T9ITzfQNKyLh4E5L5eTew/exec";
@@ -8,6 +13,7 @@ const SHEETS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxlwzE3mH4zPuVI
 window.onload = () => {
   carregarDados();
   
+  // Fechar dropdowns ao clicar fora
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.custom-select-container')) {
       document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
@@ -23,7 +29,7 @@ async function carregarDados() {
     const res = await fetch(SHEETS_ENDPOINT, { redirect: 'follow' });
     dadosGlobais = await res.json();
     
-    preencherOpcoesFiltros(dadosGlobais);
+    inicializarFiltrosMultiplos(dadosGlobais);
     aplicarFiltros();
   } catch (err) {
     console.error("Erro ao carregar dados:", err);
@@ -32,28 +38,37 @@ async function carregarDados() {
   }
 }
 
-function preencherOpcoesFiltros(dados) {
+// Inicializa os Filtros Multi-Select com Checkbox
+function inicializarFiltrosMultiplos(dados) {
   const vendedores = [...new Set(dados.map(d => d.vendedor))].filter(Boolean).sort();
   const bdrs = [...new Set(dados.map(d => d.bdr))].filter(Boolean).sort();
   const origens = [...new Set(dados.map(d => d.origem))].filter(Boolean).sort();
+  const etapas = [...new Set(dados.map(d => d.etapa))].filter(Boolean).sort();
 
-  povoarListaDropdown('options-vendedor', vendedores, 'vendedor', 'Todos os Vendedores');
-  povoarListaDropdown('options-bdr', bdrs, 'bdr', 'Todos os BDRs');
-  povoarListaDropdown('options-origem', origens, 'origem', 'Todas as Origens');
+  selecoesMultiplas.vendedor = [...vendedores];
+  selecoesMultiplas.bdr = [...bdrs];
+  selecoesMultiplas.origem = [...origens];
+  selecoesMultiplas.etapa = [...etapas];
+
+  povoarCheckboxList('options-vendedor', vendedores, 'vendedor');
+  povoarCheckboxList('options-bdr', bdrs, 'bdr');
+  povoarCheckboxList('options-origem', origens, 'origem');
+  povoarCheckboxList('options-etapa', etapas, 'etapa');
 }
 
-function povoarListaDropdown(elementId, itens, campo, textoPadrao) {
-  const container = document.getElementById(elementId);
+function povoarCheckboxList(containerId, lista, campo) {
+  const container = document.getElementById(containerId);
   if (!container) return;
-  
-  container.innerHTML = `<div class="option-item" onclick="selecionarFiltro('${campo}', '', '${textoPadrao}')">${textoPadrao}</div>`;
-  
-  itens.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'option-item';
-    div.innerText = item;
-    div.onclick = () => selecionarFiltro(campo, item, item);
-    container.appendChild(div);
+  container.innerHTML = "";
+
+  lista.forEach(item => {
+    const label = document.createElement('label');
+    label.className = 'option-checkbox';
+    label.innerHTML = `
+      <input type="checkbox" value="${item}" checked onchange="atualizarSelecaoMultipla('${campo}')">
+      <span>${item}</span>
+    `;
+    container.appendChild(label);
   });
 }
 
@@ -67,33 +82,55 @@ function toggleDropdown(id) {
 
 function filtrarListaOptions(input, optionsId) {
   const termo = input.value.toLowerCase();
-  const itens = document.getElementById(optionsId).querySelectorAll('.option-item');
+  const itens = document.getElementById(optionsId).querySelectorAll('.option-checkbox');
   itens.forEach(item => {
     const txt = item.innerText.toLowerCase();
-    item.style.display = txt.includes(termo) ? 'block' : 'none';
+    item.style.display = txt.includes(termo) ? 'flex' : 'none';
   });
 }
 
-function selecionarFiltro(campo, valor, label) {
-  filtrosAtivos[campo] = valor;
+function atualizarSelecaoMultipla(campo) {
+  const container = document.getElementById(`options-${campo}`);
+  const checkboxes = container.querySelectorAll('input[type="checkbox"]:checked');
+  
+  selecoesMultiplas[campo] = Array.from(checkboxes).map(cb => cb.value);
+  
   const labelEl = document.getElementById(`label-${campo}`);
-  if (labelEl) labelEl.innerText = label;
-  document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
+  const total = container.querySelectorAll('input[type="checkbox"]').length;
+  const selecionados = selecoesMultiplas[campo].length;
+
+  if (selecionados === 0) {
+    labelEl.innerText = "Nenhum selecionado";
+  } else if (selecionados === total) {
+    labelEl.innerText = "Todos selecionados";
+  } else {
+    labelEl.innerText = `${selecionados} selecionados`;
+  }
+
   aplicarFiltros();
+}
+
+function limparSelecao(campo) {
+  const container = document.getElementById(`options-${campo}`);
+  container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  atualizarSelecaoMultipla(campo);
 }
 
 function aplicarFiltros() {
   const dataOpt = document.getElementById('filter-date') ? document.getElementById('filter-date').value : 'todo_periodo';
   
   dadosFiltrados = dadosGlobais.filter(item => {
-    const matchVend = !filtrosAtivos.vendedor || item.vendedor === filtrosAtivos.vendedor;
-    const matchBdr = !filtrosAtivos.bdr || item.bdr === filtrosAtivos.bdr;
-    const matchOrig = !filtrosAtivos.origem || item.origem === filtrosAtivos.origem;
+    const matchVend = selecoesMultiplas.vendedor.includes(item.vendedor);
+    const matchBdr = selecoesMultiplas.bdr.includes(item.bdr);
+    const matchOrig = selecoesMultiplas.origem.includes(item.origem);
+    const matchEtapa = selecoesMultiplas.etapa.includes(item.etapa);
     const matchData = filtrarPorData(item.dataCriacao, dataOpt);
-    return matchVend && matchBdr && matchOrig && matchData;
+    
+    return matchVend && matchBdr && matchOrig && matchEtapa && matchData;
   });
 
   atualizarKPIs(dadosFiltrados);
+  renderizarGraficoEvolucaoMensal(dadosFiltrados);
   renderizarGraficosRegraNegocio(dadosFiltrados);
   povoarTabelaGeral(dadosFiltrados);
 }
@@ -136,21 +173,102 @@ function atualizarKPIs(dados) {
   document.getElementById("kpi-aberto").innerText = dados.filter(d => d.status === "Aberto").length;
 }
 
-// Lógica de Negócio dos Rankings
+// GRÁFICO DE LINHAS: EVOLUÇÃO MÊS A MÊS
+function renderizarGraficoEvolucaoMensal(dados) {
+  const canvas = document.getElementById("chartEvolucao");
+  if (!canvas) return;
+
+  // Agrupar dados por YYYY-MM
+  const mesesSet = new Set();
+  const criadosMes = {};
+  const ganhosMes = {};
+  const perdidosMes = {};
+
+  dados.forEach(d => {
+    if (!d.dataCriacao) return;
+    const dt = new Date(d.dataCriacao);
+    if (isNaN(dt.getTime())) return;
+
+    const anoMes = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+    mesesSet.add(anoMes);
+
+    criadosMes[anoMes] = (criadosMes[anoMes] || 0) + 1;
+    if (d.status === 'Ganho') ganhosMes[anoMes] = (ganhosMes[anoMes] || 0) + 1;
+    if (d.status === 'Perdido') perdidosMes[anoMes] = (perdidosMes[anoMes] || 0) + 1;
+  });
+
+  const mesesOrdenados = Array.from(mesesSet).sort();
+  
+  // Formatador para exibição (Ex: "12/2024")
+  const labelsExibicao = mesesOrdenados.map(m => {
+    const [ano, mes] = m.split('-');
+    return `${mes}/${ano}`;
+  });
+
+  const arrCriados = mesesOrdenados.map(m => criadosMes[m] || 0);
+  const arrGanhos = mesesOrdenados.map(m => ganhosMes[m] || 0);
+  const arrPerdidos = mesesOrdenados.map(m => perdidosMes[m] || 0);
+
+  const ctx = canvas.getContext('2d');
+  if (charts["chartEvolucao"]) charts["chartEvolucao"].destroy();
+
+  charts["chartEvolucao"] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labelsExibicao,
+      datasets: [
+        {
+          label: 'Criados',
+          data: arrCriados,
+          borderColor: '#38bdf8',
+          backgroundColor: 'rgba(56,189,248,0.1)',
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: 'Ganhos',
+          data: arrGanhos,
+          borderColor: '#10b981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          tension: 0.3
+        },
+        {
+          label: 'Perdidos',
+          data: arrPerdidos,
+          borderColor: '#f43f5e',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#f8fafc' } }
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+      }
+    }
+  });
+}
+
+// Rankings por Barras
 function renderizarGraficosRegraNegocio(dados) {
-  // 1. Ranking Vendedor: APENAS OPORTUNIDADES GANHAS
   const dadosGanhos = dados.filter(d => d.status === 'Ganho');
-  gerarChart('chartVendedor', agruparEOrdenar(dadosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
+  gerarChartBar('chartVendedor', agruparEOrdenar(dadosGanhos, 'vendedor'), 'Ganhos por Vendedor', '#10b981');
 
-  // 2. Ranking BDR: TODAS AS OPORTUNIDADES CRIADAS
-  gerarChart('chartBDR', agruparEOrdenar(dados, 'bdr'), 'Criados por BDR', '#38bdf8');
+  gerarChartBar('chartBDR', agruparEOrdenar(dados, 'bdr'), 'Criados por BDR', '#38bdf8');
 
-  // 3. Ranking Origem: TODAS AS OPORTUNIDADES CRIADAS
-  gerarChart('chartOrigem', agruparEOrdenar(dados, 'origem'), 'Criados por Origem', '#f59e0b');
+  gerarChartBar('chartOrigem', agruparEOrdenar(dados, 'origem'), 'Criados por Origem', '#f59e0b');
 
-  // 4. Ranking Perdidos: APENAS PERDIDOS, AGRUPADOS POR MOTIVO
   const dadosPerdidos = dados.filter(d => d.status === 'Perdido');
-  gerarChart('chartPerdidos', agruparEOrdenar(dadosPerdidos, 'motivoPerda'), 'Perdidos por Motivo', '#f43f5e');
+  gerarChartBar('chartPerdidos', agruparEOrdenar(dadosPerdidos, 'motivoPerda'), 'Perdidos por Motivo', '#f43f5e');
 }
 
 function agruparEOrdenar(dados, chave) {
@@ -161,13 +279,12 @@ function agruparEOrdenar(dados, chave) {
     counts[val] = (counts[val] || 0) + 1;
   });
 
-  // Ordena do Maior para o Menor
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .reduce((acc, [k, v]) => { acc[k] = v; return acc; }, {});
 }
 
-function gerarChart(canvasId, agrupaObj, label, corHex) {
+function gerarChartBar(canvasId, agrupaObj, label, corHex) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   
@@ -200,7 +317,7 @@ function gerarChart(canvasId, agrupaObj, label, corHex) {
   });
 }
 
-// Tabela Geral de Detalhamento de Contas
+// Tabela Geral de Detalhamento
 function povoarTabelaGeral(dados) {
   const tbody = document.getElementById("table-geral").querySelector("tbody");
   tbody.innerHTML = "";
@@ -213,7 +330,7 @@ function povoarTabelaGeral(dados) {
       <td>${row.origem}</td>
       <td>${row.bdr}</td>
       <td>${row.etapa}</td>
-      <td><span class="status-badge status-${row.status.toLowerCase().replace(' ', '')}">${row.status}</span></td>
+      <td>${row.status}</td>
       <td>${row.motivoPerda}</td>
     `;
     tbody.appendChild(tr);
@@ -236,7 +353,7 @@ function filtrarTabelaGeral(termo) {
   povoarTabelaGeral(filtrados);
 }
 
-// MODAL / POPUP DE KPIS CLICÁVEIS (Corrigido para preencher linhas)
+// MODAL / POPUP KPIS CLICÁVEIS (REVISADO)
 function abrirModalDetalhes(status) {
   const modal = document.getElementById("modal-detalhes");
   if (!modal) return;
@@ -273,7 +390,7 @@ function fecharModal() {
   if (modal) modal.style.display = "none";
 }
 
-// Ordenação de Tabelas por Coluna (Maior / Menor)
+// Ordenação de Colunas
 function ordenarTabela(tableId, colIndex) {
   const table = document.getElementById(tableId);
   let rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
