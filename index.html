@@ -26,7 +26,7 @@
       </div>
     </header>
 
-    <!-- Barra de Filtros -->
+    <!-- Barra de Filtros Avançados -->
     <section class="filters-bar">
       <!-- Filtro de Data -->
       <div class="filter-group">
@@ -42,42 +42,67 @@
         </select>
       </div>
 
-      <!-- Custom Select: Vendedor -->
+      <!-- Multi-select Vendedor -->
       <div class="filter-group custom-select-container">
-        <label>Vendedor</label>
+        <label>Vendedores</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-vendedor')">
-          <span id="label-vendedor">Todos os Vendedores</span>
+          <span id="label-vendedor">Todos selecionados</span>
           <span class="arrow">▼</span>
         </div>
         <div class="custom-dropdown" id="dropdown-vendedor">
           <input type="text" class="search-input" placeholder="Pesquisar vendedor..." oninput="filtrarListaOptions(this, 'options-vendedor')">
+          <div class="actions-dropdown">
+            <button class="btn-link" onclick="limparSelecao('vendedor')">Limpar seleção</button>
+          </div>
           <div class="options-list" id="options-vendedor"></div>
         </div>
       </div>
 
-      <!-- Custom Select: BDR -->
+      <!-- Multi-select BDR -->
       <div class="filter-group custom-select-container">
-        <label>BDR / SDR</label>
+        <label>BDRs / SDRs</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-bdr')">
-          <span id="label-bdr">Todos os BDRs</span>
+          <span id="label-bdr">Todos selecionados</span>
           <span class="arrow">▼</span>
         </div>
         <div class="custom-dropdown" id="dropdown-bdr">
           <input type="text" class="search-input" placeholder="Pesquisar BDR..." oninput="filtrarListaOptions(this, 'options-bdr')">
+          <div class="actions-dropdown">
+            <button class="btn-link" onclick="limparSelecao('bdr')">Limpar seleção</button>
+          </div>
           <div class="options-list" id="options-bdr"></div>
         </div>
       </div>
 
-      <!-- Custom Select: Origem -->
+      <!-- Multi-select Origem -->
       <div class="filter-group custom-select-container">
-        <label>Origem / Indicador</label>
+        <label>Origens / Indicadores</label>
         <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-origem')">
-          <span id="label-origem">Todas as Origens</span>
+          <span id="label-origem">Todas selecionadas</span>
           <span class="arrow">▼</span>
         </div>
         <div class="custom-dropdown" id="dropdown-origem">
           <input type="text" class="search-input" placeholder="Pesquisar origem..." oninput="filtrarListaOptions(this, 'options-origem')">
+          <div class="actions-dropdown">
+            <button class="btn-link" onclick="limparSelecao('origem')">Limpar seleção</button>
+          </div>
           <div class="options-list" id="options-origem"></div>
+        </div>
+      </div>
+
+      <!-- Multi-select Etapa -->
+      <div class="filter-group custom-select-container">
+        <label>Etapas do Funil</label>
+        <div class="custom-select-trigger" onclick="toggleDropdown('dropdown-etapa')">
+          <span id="label-etapa">Todas selecionadas</span>
+          <span class="arrow">▼</span>
+        </div>
+        <div class="custom-dropdown" id="dropdown-etapa">
+          <input type="text" class="search-input" placeholder="Pesquisar etapa..." oninput="filtrarListaOptions(this, 'options-etapa')">
+          <div class="actions-dropdown">
+            <button class="btn-link" onclick="limparSelecao('etapa')">Limpar seleção</button>
+          </div>
+          <div class="options-list" id="options-etapa"></div>
         </div>
       </div>
     </section>
@@ -117,7 +142,17 @@
       </div>
     </section>
 
-    <!-- Grid de Gráficos (Ranking limpos) -->
+    <!-- NOVO: Gráfico de Linhas - Evolução Mensal -->
+    <section class="evolution-section">
+      <div class="card card-full-width">
+        <h2>Evolução Mensal (Criados vs Ganhos vs Perdidos)</h2>
+        <div class="chart-container-large">
+          <canvas id="chartEvolucao"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grid de Rankings por Barras -->
     <section class="charts-grid">
       <div class="card">
         <h2>Ranking por Vendedor (Ganhos)</h2>
@@ -148,7 +183,7 @@
       </div>
     </section>
 
-    <!-- CARD SEPARADO DE DETALHAMENTO DE CONTAS -->
+    <!-- Detalhamento de Contas em Card Separado -->
     <section class="details-section">
       <div class="card card-table-full">
         <div class="card-table-header">
